@@ -1,0 +1,48 @@
+## Build output
+bin/
+obj/
+out/
+artifacts/
+TestResults/
+
+## User-specific IDE files
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## Logs
+*.log
+logs/
+
+## Local configuration and secrets
+.env
+.env.*
+*.local
+appsettings.Local.json
+appsettings.*.Local.json
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+
+## Coverage
+coverage/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+## OS files
+.DS_Store
+Thumbs.db
+desktop.ini

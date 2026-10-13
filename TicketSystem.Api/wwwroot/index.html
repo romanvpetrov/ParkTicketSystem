@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>United Parks Cart</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+      line-height: 1.4;
+      color: #1f2937;
+      background: #f4f7f3;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: 32px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    section {
+      margin-bottom: 28px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .calendar-header h2 {
+      margin: 0;
+    }
+
+    .calendar-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .weekday {
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .day {
+      min-height: 96px;
+      padding: 10px;
+      border: 1px solid #d5ded0;
+      border-radius: 8px;
+      background: #ffffff;
+      text-align: left;
+    }
+
+    .day.available {
+      border-color: #2f6f4e;
+      background: #f7fbf4;
+    }
+
+    .day.unavailable {
+      color: #9ca3af;
+      background: #f8faf7;
+    }
+
+    .day.empty-day {
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .day-number {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .name {
+      margin: 0 0 6px;
+      font-weight: 700;
+    }
+
+    .details {
+      margin: 0 0 12px;
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    .day .details {
+      display: block;
+      margin-bottom: 0;
+      font-size: 12px;
+    }
+
+    button {
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid #2f6f4e;
+      border-radius: 6px;
+      background: #2f6f4e;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      border-color: #9f2f2f;
+      background: #9f2f2f;
+    }
+
+    button.day {
+      min-height: 96px;
+      padding: 10px;
+      border-color: #d5ded0;
+      color: #1f2937;
+      font-weight: 400;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    button.day.available {
+      border-color: #2f6f4e;
+      background: #f7fbf4;
+    }
+
+    button.day.unavailable {
+      border-color: #d5ded0;
+      background: #f8faf7;
+      color: #9ca3af;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .cart-id,
+    .status {
+      min-height: 22px;
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border: 1px solid #d5ded0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e5eadf;
+      text-align: left;
+    }
+
+    th {
+      background: #e9f0e4;
+      font-size: 13px;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty {
+      padding: 18px;
+      border: 1px dashed #b8c4b0;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #4b5563;
+    }
+
+    dialog {
+      width: min(520px, calc(100% - 32px));
+      border: 1px solid #d5ded0;
+      border-radius: 8px;
+      padding: 0;
+    }
+
+    dialog::backdrop {
+      background: rgba(31, 41, 55, 0.45);
+    }
+
+    .dialog-header,
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .dialog-header {
+      border-bottom: 1px solid #e5eadf;
+    }
+
+    .dialog-header h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .dialog-content {
+      padding: 16px;
+    }
+
+    .product-option {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5eadf;
+    }
+
+    .product-option:last-child {
+      border-bottom: 0;
+    }
+
+    .product-option input {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>United Parks Cart</h1>
+
+    <section>
+      <div class="calendar-header">
+        <h2 id="calendarTitle">Tickets</h2>
+        <div class="calendar-controls">
+          <button type="button" id="previousMonth" aria-label="Previous month">&lt;</button>
+          <button type="button" id="nextMonth" aria-label="Next month">&gt;</button>
+        </div>
+      </div>
+      <div id="availability"></div>
+    </section>
+
+    <section>
+      <h2>Cart</h2>
+      <p class="cart-id" id="cartId">No cart yet</p>
+      <div id="cart"></div>
+    </section>
+
+    <p class="status" id="status"></p>
+  </main>
+
+  <dialog id="productDialog">
+    <div class="dialog-header">
+      <h3 id="dialogTitle">Select Products</h3>
+      <button class="secondary" type="button" id="closeDialog">Close</button>
+    </div>
+    <form method="dialog">
+      <div class="dialog-content" id="dialogProducts"></div>
+      <div class="dialog-actions">
+        <span class="details" id="dialogHint"></span>
+        <button type="button" id="addSelectedProducts">Add Selected</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    let cartId = localStorage.getItem("ticketSystemCartId");
+    let availabilityByDay = new Map();
+    let selectedDialogDate = null;
+    const initialMonth = new Date();
+    let selectedYear = initialMonth.getFullYear();
+    let selectedMonth = initialMonth.getMonth() + 1;
+
+    const calendarTitle = document.getElementById("calendarTitle");
+    const availabilityElement = document.getElementById("availability");
+    const cartElement = document.getElementById("cart");
+    const cartIdElement = document.getElementById("cartId");
+    const statusElement = document.getElementById("status");
+    const previousMonth = document.getElementById("previousMonth");
+    const nextMonth = document.getElementById("nextMonth");
+    const productDialog = document.getElementById("productDialog");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogProducts = document.getElementById("dialogProducts");
+    const dialogHint = document.getElementById("dialogHint");
+    const closeDialog = document.getElementById("closeDialog");
+    const addSelectedProducts = document.getElementById("addSelectedProducts");
+
+    function money(value) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD"
+      }).format(value);
+    }
+
+    function setStatus(message) {
+      statusElement.textContent = message ?? "";
+    }
+
+    function monthName(year, month) {
+      return new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        year: "numeric"
+      }).format(new Date(year, month - 1, 1));
+    }
+
+    function dateKey(year, month, day) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    async function changeMonth(monthOffset) {
+      const nextDate = new Date(selectedYear, selectedMonth - 1 + monthOffset, 1);
+      selectedYear = nextDate.getFullYear();
+      selectedMonth = nextDate.getMonth() + 1;
+      await loadAvailability();
+    }
+
+    async function loadAvailability() {
+      availabilityElement.innerHTML = `<div class="empty">Loading availability...</div>`;
+      calendarTitle.textContent = `${monthName(selectedYear, selectedMonth)} Tickets`;
+
+      const response = await fetch(`/api/parks/adventurebay/availability/${selectedYear}/${selectedMonth}`);
+      const availability = await response.json();
+
+      const ticketAvailability = availability
+        .filter(product => product.productId === "adventurebay-entry");
+      const availabilityByDate = new Map(ticketAvailability.map(product => [product.date, product]));
+      availabilityByDay = availability.reduce((map, product) => {
+        const products = map.get(product.date) ?? [];
+        products.push(product);
+        map.set(product.date, products);
+        return map;
+      }, new Map());
+      const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1).getDay();
+      const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+
+      availabilityElement.innerHTML = `
+        <div class="calendar" id="calendar">
+          <div class="weekday">Sun</div>
+          <div class="weekday">Mon</div>
+          <div class="weekday">Tue</div>
+          <div class="weekday">Wed</div>
+          <div class="weekday">Thu</div>
+          <div class="weekday">Fri</div>
+          <div class="weekday">Sat</div>
+        </div>
+      `;
+
+      const calendarElement = document.getElementById("calendar");
+
+      for (let index = 0; index < firstDayOfMonth; index += 1) {
+        const emptyDay = document.createElement("div");
+        emptyDay.className = "day empty-day";
+        calendarElement.appendChild(emptyDay);
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const date = dateKey(selectedYear, selectedMonth, day);
+        const product = availabilityByDate.get(date);
+        const isAvailable = product && product.availableTickets > 0;
+        const dayElement = document.createElement("button");
+        dayElement.type = "button";
+        dayElement.className = `day ${isAvailable ? "available" : "unavailable"}`;
+        dayElement.disabled = !isAvailable;
+
+        dayElement.innerHTML = isAvailable
+          ? `
+              <span class="day-number">${day}</span>
+              <span class="details">${money(product.price)}</span>
+              <span class="details">${product.availableTickets} available</span>
+            `
+          : `
+              <span class="day-number">${day}</span>
+              <span class="details">${product ? "Sold out" : "Unavailable"}</span>
+            `;
+
+        if (isAvailable) {
+          dayElement.addEventListener("click", () => openProductDialog(product.date));
+        }
+
+        calendarElement.appendChild(dayElement);
+      }
+    }
+
+    function openProductDialog(date) {
+      selectedDialogDate = date;
+      const products = (availabilityByDay.get(date) ?? [])
+        .filter(product => product.availableTickets > 0);
+
+      dialogTitle.textContent = `Products for ${date}`;
+      dialogProducts.innerHTML = "";
+      dialogHint.textContent = products.length === 0 ? "No products available." : "Choose one or more products.";
+      addSelectedProducts.disabled = products.length === 0;
+
+      for (const product of products) {
+        const option = document.createElement("label");
+        option.className = "product-option";
+        option.innerHTML = `
+          <input type="checkbox" value="${product.productId}">
+          <span>
+            <span class="name">${product.productName}</span>
+            <span class="details">${money(product.price)} | ${product.availableTickets} available</span>
+          </span>
+        `;
+        dialogProducts.appendChild(option);
+      }
+
+      productDialog.showModal();
+    }
+
+    function dateParts(date) {
+      const [year, month, day] = date.split("-").map(Number);
+      return { year, month, day };
+    }
+
+    async function addItem(productId, date) {
+      setStatus("Adding item...");
+
+      const selectedDate = dateParts(date);
+      const endpoint = cartId ? `/api/cart/${cartId}/items` : "/api/cart/items";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          quantity: 1,
+          year: selectedDate.year,
+          month: selectedDate.month,
+          day: selectedDate.day
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setStatus(`${result.failureCode}: ${result.message}`);
+        return;
+      }
+
+      cartId = result.cartId;
+      localStorage.setItem("ticketSystemCartId", cartId);
+      setStatus("Item added.");
+      await loadCart();
+    }
+
+    async function addSelectedItems() {
+      const selectedProducts = [...dialogProducts.querySelectorAll("input:checked")]
+        .map(input => input.value);
+
+      if (selectedProducts.length === 0 || !selectedDialogDate) {
+        setStatus("Select at least one product.");
+        return;
+      }
+
+      for (const productId of selectedProducts) {
+        await addItem(productId, selectedDialogDate);
+      }
+
+      productDialog.close();
+    }
+
+    async function removeItem(productId, date) {
+      if (!cartId) {
+        return;
+      }
+
+      setStatus("Removing item...");
+
+      const selectedDate = dateParts(date);
+      const response = await fetch(`/api/cart/${cartId}/items/${encodeURIComponent(productId)}/${selectedDate.year}/${selectedDate.month}/${selectedDate.day}`, {
+        method: "DELETE"
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setStatus(`${result.failureCode}: ${result.message}`);
+        return;
+      }
+
+      setStatus("Item removed.");
+      await loadCart();
+    }
+
+    async function loadCart() {
+      cartIdElement.textContent = cartId ? `Cart id: ${cartId}` : "No cart yet";
+
+      if (!cartId) {
+        cartElement.innerHTML = `<div class="empty">Your cart is empty.</div>`;
+        return;
+      }
+
+      const response = await fetch(`/api/cart/${cartId}/items`);
+      const items = await response.json();
+
+      if (items.length === 0) {
+        cartElement.innerHTML = `<div class="empty">Your cart is empty.</div>`;
+        return;
+      }
+
+      cartElement.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Date</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      `;
+
+      const body = cartElement.querySelector("tbody");
+
+      for (const item of items) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.productId}</td>
+          <td>${item.visitDate}</td>
+          <td>${item.quantity}</td>
+          <td>${money(item.price)}</td>
+          <td>${money(item.lineTotal)}</td>
+          <td><button class="secondary" type="button">Remove</button></td>
+        `;
+
+        row.querySelector("button").addEventListener("click", () => removeItem(item.productId, item.visitDate));
+        body.appendChild(row);
+      }
+    }
+
+    closeDialog.addEventListener("click", () => productDialog.close());
+    addSelectedProducts.addEventListener("click", addSelectedItems);
+    previousMonth.addEventListener("click", () => changeMonth(-1));
+    nextMonth.addEventListener("click", () => changeMonth(1));
+    window.addEventListener("keydown", event => {
+      if (productDialog.open) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        changeMonth(-1);
+      }
+
+      if (event.key === "ArrowRight") {
+        changeMonth(1);
+      }
+    });
+
+    loadAvailability();
+    loadCart();
+  </script>
+</body>
+</html>
