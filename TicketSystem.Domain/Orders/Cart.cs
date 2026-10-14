@@ -20,17 +20,6 @@ public sealed class Cart
 
     public void AddItem(CartItem item)
     {
-        var existingItem = _items.FirstOrDefault(cartItem =>
-            cartItem.ProductId == item.ProductId &&
-            cartItem.VisitDate == item.VisitDate);
-
-        if (existingItem is not null)
-        {
-            var existingItemIndex = _items.IndexOf(existingItem);
-            _items[existingItemIndex] = existingItem.IncreaseQuantityBy(item.Quantity);
-            return;
-        }
-
         _items.Add(item);
     }
 
@@ -46,6 +35,20 @@ public sealed class Cart
         }
 
         _items.Remove(item);
+
+        return true;
+    }
+
+    public bool AssignTicketHolder(Guid cartItemId, TicketHolder ticketHolder)
+    {
+        var item = _items.FirstOrDefault(item => item.Id == cartItemId);
+
+        if (item is null)
+        {
+            return false;
+        }
+
+        item.AssignTicketHolder(ticketHolder);
 
         return true;
     }

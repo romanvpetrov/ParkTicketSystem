@@ -32,6 +32,7 @@ public class ShoppingServiceTests
         var cartItems = shoppingService.GetCartItems(result.CartId);
         var cartItem = Assert.Single(cartItems);
 
+        Assert.NotEqual(Guid.Empty, cartItem.Id);
         Assert.Equal("adventurebay-entry", cartItem.ProductId);
         Assert.Equal("adventurebay", cartItem.ParkUniqueName);
         Assert.Equal(new DateOnly(2026, 7, 1), cartItem.VisitDate);
@@ -73,6 +74,7 @@ public class ShoppingServiceTests
         var first = cartItems[0];
         var second = cartItems[1];
 
+        Assert.NotEqual(Guid.Empty, first.Id);
         Assert.Equal("adventurebay-entry", first.ProductId);
         Assert.Equal("adventurebay", first.ParkUniqueName);
         Assert.Equal(new DateOnly(2026, 7, 1), first.VisitDate);
@@ -80,6 +82,7 @@ public class ShoppingServiceTests
         Assert.Equal(79.99m, first.Price);
         Assert.Equal(159.98m, first.LineTotal);
 
+        Assert.NotEqual(Guid.Empty, second.Id);
         Assert.Equal("adventurebay-entry", second.ProductId);
         Assert.Equal("adventurebay", second.ParkUniqueName);
         Assert.Equal(new DateOnly(2026, 7, 2), second.VisitDate);
@@ -89,7 +92,7 @@ public class ShoppingServiceTests
     }
 
     [Fact]
-    public void AddToCart_CombinesQuantityWhenAddingSameProductTwice()
+    public void AddToCart_AddsSameTicketAsSeparateCartItems()
     {
         var cartRepository = new StubCartRepository();
         var parkRepository = new StubParkRepository(
@@ -103,18 +106,90 @@ public class ShoppingServiceTests
                 79.99m));
         var shoppingService = new ShoppingService(cartRepository, parkRepository);
 
-        var firstResult = shoppingService.AddToCart("adventurebay-entry", 2, 2026, 7, 1);
-        shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 3, 2026, 7, 1);
+        var firstResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
+        shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
 
         var cartItems = shoppingService.GetCartItems(firstResult.CartId);
-        var cartItem = Assert.Single(cartItems);
+        Assert.Equal(2, cartItems.Count);
 
-        Assert.Equal("adventurebay-entry", cartItem.ProductId);
-        Assert.Equal("adventurebay", cartItem.ParkUniqueName);
-        Assert.Equal(new DateOnly(2026, 7, 1), cartItem.VisitDate);
-        Assert.Equal(5, cartItem.Quantity);
-        Assert.Equal(79.99m, cartItem.Price);
-        Assert.Equal(399.95m, cartItem.LineTotal);
+        var first = cartItems[0];
+        var second = cartItems[1];
+
+        Assert.NotEqual(Guid.Empty, first.Id);
+        Assert.Equal("adventurebay-entry", first.ProductId);
+        Assert.Equal("adventurebay", first.ParkUniqueName);
+        Assert.Equal(new DateOnly(2026, 7, 1), first.VisitDate);
+        Assert.Equal(1, first.Quantity);
+        Assert.Equal(79.99m, first.Price);
+        Assert.Equal(79.99m, first.LineTotal);
+
+        Assert.NotEqual(Guid.Empty, second.Id);
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.Equal("adventurebay-entry", second.ProductId);
+        Assert.Equal("adventurebay", second.ParkUniqueName);
+        Assert.Equal(new DateOnly(2026, 7, 1), second.VisitDate);
+        Assert.Equal(1, second.Quantity);
+        Assert.Equal(79.99m, second.Price);
+        Assert.Equal(79.99m, second.LineTotal);
+    }
+
+    [Fact]
+    public void AssignTicketHolder_AddsNamesAndEmailsToTwoTicketsOfTheSameType()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Park Ticket",
+                new DateOnly(2026, 7, 1),
+                10,
+                0,
+                79.99m));
+        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var addResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
+        var addedCartItems = shoppingService.GetCartItems(addResult.CartId);
+        var firstCartItemId = addedCartItems[0].Id;
+        var secondCartItemId = addedCartItems[1].Id;
+
+        var firstAssignResult = shoppingService.AssignTicketHolder(
+            addResult.CartId,
+            firstCartItemId,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+        var secondAssignResult = shoppingService.AssignTicketHolder(
+            addResult.CartId,
+            secondCartItemId,
+            "Jamie",
+            "Smith",
+            "jamie@example.com");
+
+        Assert.True(firstAssignResult.Success);
+        Assert.Null(firstAssignResult.FailureCode);
+        Assert.Null(firstAssignResult.Message);
+        Assert.True(secondAssignResult.Success);
+        Assert.Null(secondAssignResult.FailureCode);
+        Assert.Null(secondAssignResult.Message);
+
+        var cartItems = shoppingService.GetCartItems(addResult.CartId);
+        Assert.Equal(2, cartItems.Count);
+
+        var first = cartItems[0];
+        var second = cartItems[1];
+
+        Assert.Equal(firstCartItemId, first.Id);
+        Assert.Equal("adventurebay-entry", first.ProductId);
+        Assert.Equal("Ryan", first.TicketHolderFirstName);
+        Assert.Equal("Peterson", first.TicketHolderLastName);
+        Assert.Equal("ryan@example.com", first.TicketHolderEmail);
+
+        Assert.Equal(secondCartItemId, second.Id);
+        Assert.Equal("adventurebay-entry", second.ProductId);
+        Assert.Equal("Jamie", second.TicketHolderFirstName);
+        Assert.Equal("Smith", second.TicketHolderLastName);
+        Assert.Equal("jamie@example.com", second.TicketHolderEmail);
     }
 
     [Fact]

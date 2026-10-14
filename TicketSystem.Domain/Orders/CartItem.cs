@@ -3,7 +3,17 @@ namespace TicketSystem.Domain.Orders;
 public sealed class CartItem
 {
     public CartItem(string productId, string parkUniqueName, DateOnly visitDate, int quantity, decimal price)
+        : this(Guid.NewGuid(), productId, parkUniqueName, visitDate, quantity, price)
     {
+    }
+
+    public CartItem(Guid id, string productId, string parkUniqueName, DateOnly visitDate, int quantity, decimal price)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("Cart item id is required.", nameof(id));
+        }
+
         if (string.IsNullOrWhiteSpace(productId))
         {
             throw new ArgumentException("Product id is required.", nameof(productId));
@@ -24,12 +34,15 @@ public sealed class CartItem
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
         }
 
+        Id = id;
         ProductId = productId;
         ParkUniqueName = parkUniqueName;
         VisitDate = visitDate;
         Quantity = quantity;
         Price = price;
     }
+
+    public Guid Id { get; }
 
     public string ProductId { get; }
 
@@ -43,8 +56,15 @@ public sealed class CartItem
 
     public decimal LineTotal => Quantity * Price;
 
+    public TicketHolder? TicketHolder { get; private set; }
+
+    public void AssignTicketHolder(TicketHolder ticketHolder)
+    {
+        TicketHolder = ticketHolder;
+    }
+
     public CartItem IncreaseQuantityBy(int quantity)
     {
-        return new CartItem(ProductId, ParkUniqueName, VisitDate, Quantity + quantity, Price);
+        return new CartItem(Id, ProductId, ParkUniqueName, VisitDate, Quantity + quantity, Price);
     }
 }

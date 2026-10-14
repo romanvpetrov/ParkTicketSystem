@@ -3,55 +3,318 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>United Parks Cart</title>
+  <title>Park Ticket System</title>
   <style>
     :root {
       color-scheme: light;
-      font-family: Arial, sans-serif;
-      line-height: 1.4;
-      color: #1f2937;
-      background: #f4f7f3;
+      --ink: #17212b;
+      --muted: #667085;
+      --line: #d8e0e8;
+      --paper: #ffffff;
+      --soft: #f4f7fa;
+      --navy: #06324a;
+      --blue: #0f79b8;
+      --teal: #1d9a91;
+      --coral: #d94f3d;
+      --gold: #f3c449;
+      --shadow: 0 18px 45px rgba(17, 34, 51, 0.14);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      padding: 32px;
+      background: var(--soft);
+      color: var(--ink);
     }
 
-    main {
-      max-width: 900px;
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid rgba(216, 224, 232, 0.9);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar-inner {
+      width: min(1180px, calc(100% - 32px));
+      min-height: 72px;
       margin: 0 auto;
-    }
-
-    h1 {
-      margin: 0 0 24px;
-      font-size: 32px;
-    }
-
-    h2 {
-      margin: 0 0 12px;
-      font-size: 20px;
-    }
-
-    section {
-      margin-bottom: 28px;
-    }
-
-    .calendar-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 18px;
     }
 
-    .calendar-header h2 {
-      margin: 0;
-    }
-
-    .calendar-controls {
+    .brand {
       display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 850;
+      color: var(--navy);
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--navy), var(--teal));
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cart-pill {
+      display: inline-flex;
+      align-items: center;
       gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--navy);
+      font-weight: 760;
+    }
+
+    .cart-pill svg,
+    .icon-button svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2.2;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    .hero {
+      min-height: 250px;
+      display: grid;
+      align-content: end;
+      gap: 16px;
+      padding: 34px;
+      background:
+        linear-gradient(105deg, rgba(6, 50, 74, 0.92), rgba(15, 121, 184, 0.72)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 420'%3E%3Cpath fill='%231d9a91' d='M0 258c91-43 180-61 268-54 132 10 213 72 351 68 140-3 224-71 349-62 91 7 168 51 232 91v119H0z'/%3E%3Cpath fill='%23f3c449' fill-opacity='.8' d='M0 314c99-38 186-51 262-40 126 19 217 78 351 75 135-3 210-68 335-61 100 6 184 51 252 93v39H0z'/%3E%3C/svg%3E");
+      background-size: cover;
+      background-position: center;
+      color: #fff;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: #ffe48a;
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .hero p:last-child {
+      max-width: 640px;
+      margin: 0;
+      color: #e7f1f5;
+      font-size: 17px;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 22px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .steps,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 10px 28px rgba(17, 34, 51, 0.08);
+    }
+
+    .steps {
+      padding: 12px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 10px;
+      border-radius: 8px;
+      color: var(--muted);
+      font-weight: 760;
+    }
+
+    .step-number {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--navy);
+      background: #fff;
+    }
+
+    .step.active {
+      background: #eaf6f6;
+      color: var(--navy);
+    }
+
+    .step.active .step-number {
+      border-color: var(--teal);
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .panel {
+      padding: 22px;
+      min-height: 430px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      color: var(--navy);
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .lede {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .park-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .park-card {
+      min-height: 210px;
+      padding: 20px;
+      display: grid;
+      align-content: end;
+      gap: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(6, 50, 74, 0.1), rgba(6, 50, 74, 0.95)),
+        linear-gradient(135deg, #1384bf, #1d9a91 58%, #f3c449);
+      color: #fff;
+      text-align: left;
+      box-shadow: 0 14px 28px rgba(6, 50, 74, 0.18);
+    }
+
+    .park-card strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1.04;
+    }
+
+    .park-card span {
+      color: #e9f5f7;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border-radius: 6px;
+      background: var(--navy);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .button.secondary {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--navy);
+    }
+
+    .button.coral {
+      background: var(--coral);
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--navy);
     }
 
     .calendar {
@@ -61,519 +324,1045 @@
     }
 
     .weekday {
-      color: #4b5563;
+      color: var(--muted);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 850;
       text-align: center;
       text-transform: uppercase;
     }
 
     .day {
-      min-height: 96px;
+      min-height: 104px;
       padding: 10px;
-      border: 1px solid #d5ded0;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: #ffffff;
+      background: #fff;
       text-align: left;
     }
 
     .day.available {
-      border-color: #2f6f4e;
-      background: #f7fbf4;
+      border-color: rgba(29, 154, 145, 0.45);
+      background: linear-gradient(180deg, #fff, #effafa);
     }
 
-    .day.unavailable {
-      color: #9ca3af;
-      background: #f8faf7;
+    .day.available:hover,
+    .day.selected {
+      border-color: var(--teal);
+      box-shadow: inset 0 -4px 0 var(--teal);
     }
 
-    .day.empty-day {
+    .day.sold-out {
+      background: #f2f4f7;
+      color: #98a2b3;
+    }
+
+    .day.empty {
       border-color: transparent;
       background: transparent;
+      box-shadow: none;
     }
 
     .day-number {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
+      color: var(--navy);
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 850;
     }
 
-    .name {
-      margin: 0 0 6px;
-      font-weight: 700;
-    }
-
-    .details {
-      margin: 0 0 12px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-
-    .day .details {
+    .day-meta {
       display: block;
-      margin-bottom: 0;
+      color: var(--muted);
       font-size: 12px;
+      line-height: 1.35;
     }
 
-    button {
-      min-height: 36px;
-      padding: 0 14px;
-      border: 1px solid #2f6f4e;
-      border-radius: 6px;
-      background: #2f6f4e;
-      color: #ffffff;
-      font-weight: 700;
-      cursor: pointer;
+    .selection-bar {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 16px;
     }
 
-    button.secondary {
-      border-color: #9f2f2f;
-      background: #9f2f2f;
-    }
-
-    button.day {
-      min-height: 96px;
-      padding: 10px;
-      border-color: #d5ded0;
-      color: #1f2937;
-      font-weight: 400;
-      text-align: left;
-      cursor: pointer;
-    }
-
-    button.day.available {
-      border-color: #2f6f4e;
-      background: #f7fbf4;
-    }
-
-    button.day.unavailable {
-      border-color: #d5ded0;
-      background: #f8faf7;
-      color: #9ca3af;
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .cart-id,
-    .status {
-      min-height: 22px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #ffffff;
-      border: 1px solid #d5ded0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    th,
-    td {
-      padding: 12px;
-      border-bottom: 1px solid #e5eadf;
-      text-align: left;
-    }
-
-    th {
-      background: #e9f0e4;
-      font-size: 13px;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    .empty {
-      padding: 18px;
-      border: 1px dashed #b8c4b0;
-      border-radius: 8px;
-      background: #ffffff;
-      color: #4b5563;
-    }
-
-    dialog {
-      width: min(520px, calc(100% - 32px));
-      border: 1px solid #d5ded0;
-      border-radius: 8px;
-      padding: 0;
-    }
-
-    dialog::backdrop {
-      background: rgba(31, 41, 55, 0.45);
-    }
-
-    .dialog-header,
-    .dialog-actions {
+    .selected-date-summary {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .product-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 12px;
-      padding: 16px;
-    }
-
-    .dialog-header {
-      border-bottom: 1px solid #e5eadf;
-    }
-
-    .dialog-header h3 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .dialog-content {
-      padding: 16px;
     }
 
     .product-option {
+      position: relative;
       display: grid;
-      grid-template-columns: 24px 1fr;
-      gap: 10px;
-      padding: 12px 0;
-      border-bottom: 1px solid #e5eadf;
+      grid-template-columns: 22px 1fr;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
     }
 
-    .product-option:last-child {
-      border-bottom: 0;
+    .product-option.selected {
+      border-color: var(--teal);
+      background: #effafa;
     }
 
     .product-option input {
-      margin-top: 4px;
+      width: 18px;
+      height: 18px;
+      margin: 2px 0 0;
+      accent-color: var(--teal);
+    }
+
+    .product-title {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--navy);
+      font-weight: 850;
+    }
+
+    .product-detail {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .cart-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .cart-table th,
+    .cart-table td {
+      padding: 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .cart-table th {
+      background: var(--navy);
+      color: #fff;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .cart-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .cart-total {
+      display: flex;
+      justify-content: flex-end;
+      margin: 16px 0 0;
+      color: var(--navy);
+      font-size: 20px;
+      font-weight: 850;
+    }
+
+    .holder-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .holder-card {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .holder-card-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .holder-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      color: var(--navy);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .empty-state,
+    .notice {
+      padding: 18px;
+      border: 1px dashed #a8bac8;
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--muted);
+    }
+
+    .notice {
+      margin-top: 14px;
+      border-style: solid;
+    }
+
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(6, 28, 42, 0.6);
+    }
+
+    .dialog-backdrop[hidden] {
+      display: none;
+    }
+
+    .ticket-dialog {
+      width: min(620px, 100%);
+      max-height: min(720px, calc(100vh - 36px));
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 28px 70px rgba(6, 28, 42, 0.32);
+    }
+
+    .dialog-header,
+    .dialog-body,
+    .dialog-footer {
+      padding: 18px;
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .dialog-header h2 {
+      margin-bottom: 4px;
+    }
+
+    .dialog-body {
+      overflow: auto;
+    }
+
+    .dialog-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 16px 0 0;
+      color: var(--muted);
+    }
+
+    .mobile-only {
+      display: none;
+    }
+
+    @media (max-width: 880px) {
+      .workflow {
+        grid-template-columns: 1fr;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .step {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topbar-inner,
+      main {
+        width: min(100% - 24px, 1180px);
+      }
+
+      .brand span:last-child {
+        display: none;
+      }
+
+      main {
+        padding-top: 18px;
+      }
+
+      .hero {
+        min-height: 220px;
+        padding: 24px;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .panel-header {
+        display: grid;
+      }
+
+      .toolbar {
+        justify-content: start;
+      }
+
+      .selected-date-summary,
+      .dialog-footer,
+      .holder-card-header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .holder-fields {
+        grid-template-columns: 1fr;
+      }
+
+      .calendar {
+        gap: 5px;
+      }
+
+      .day {
+        min-height: 82px;
+        padding: 7px;
+      }
+
+      .day-meta {
+        font-size: 11px;
+      }
+
+      .desktop-only {
+        display: none;
+      }
+
+      .mobile-only {
+        display: inline;
+      }
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>United Parks Cart</h1>
-
-    <section>
-      <div class="calendar-header">
-        <h2 id="calendarTitle">Tickets</h2>
-        <div class="calendar-controls">
-          <button type="button" id="previousMonth" aria-label="Previous month">&lt;</button>
-          <button type="button" id="nextMonth" aria-label="Next month">&gt;</button>
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand" aria-label="Park Ticket System">
+          <span class="brand-mark">PTS</span>
+          <span>Park Ticket System</span>
+        </div>
+        <div class="top-actions">
+          <button class="cart-pill" type="button" data-action="go-cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M6 7h15l-2 9H8L6 7Z"></path>
+              <path d="M6 7 5 3H2"></path>
+              <circle cx="9" cy="20" r="1"></circle>
+              <circle cx="18" cy="20" r="1"></circle>
+            </svg>
+            <span id="cartCount">Cart</span>
+          </button>
         </div>
       </div>
-      <div id="availability"></div>
-    </section>
+    </header>
 
-    <section>
-      <h2>Cart</h2>
-      <p class="cart-id" id="cartId">No cart yet</p>
-      <div id="cart"></div>
-    </section>
+    <main>
+      <section class="hero" aria-labelledby="heroTitle">
+        <p class="eyebrow">Anonymous checkout</p>
+        <h1 id="heroTitle">Plan a visit in a few clean steps.</h1>
+        <p>Choose a park, pick an available date, select your ticket type, and continue to your cart.</p>
+      </section>
 
-    <p class="status" id="status"></p>
-  </main>
+      <section class="workflow">
+        <aside class="steps" aria-label="Shopping steps">
+          <div class="step" data-step="parks"><span class="step-number">1</span><span>Park</span></div>
+          <div class="step" data-step="date"><span class="step-number">2</span><span>Date & tickets</span></div>
+          <div class="step" data-step="cart"><span class="step-number">3</span><span>Cart</span></div>
+          <div class="step" data-step="holders"><span class="step-number">4</span><span>Names</span></div>
+        </aside>
 
-  <dialog id="productDialog">
-    <div class="dialog-header">
-      <h3 id="dialogTitle">Select Products</h3>
-      <button class="secondary" type="button" id="closeDialog">Close</button>
-    </div>
-    <form method="dialog">
-      <div class="dialog-content" id="dialogProducts"></div>
-      <div class="dialog-actions">
-        <span class="details" id="dialogHint"></span>
-        <button type="button" id="addSelectedProducts">Add Selected</button>
-      </div>
-    </form>
-  </dialog>
+        <section class="panel" id="app" aria-live="polite"></section>
+      </section>
+
+      <p class="status" id="status" role="status"></p>
+    </main>
+  </div>
+
+  <div class="dialog-backdrop" id="ticketDialogHost" hidden></div>
 
   <script>
-    let cartId = localStorage.getItem("ticketSystemCartId");
-    let availabilityByDay = new Map();
-    let selectedDialogDate = null;
-    const initialMonth = new Date();
-    let selectedYear = initialMonth.getFullYear();
-    let selectedMonth = initialMonth.getMonth() + 1;
+    const PARKS = [
+      {
+        uniqueName: "adventurebay",
+        name: "Adventure Bay",
+        location: "Orlando, Florida",
+        summary: "Single-day admission, food passes, and dated add-ons.",
+        accent: "Great for flexible family visits"
+      }
+    ];
 
-    const calendarTitle = document.getElementById("calendarTitle");
-    const availabilityElement = document.getElementById("availability");
-    const cartElement = document.getElementById("cart");
-    const cartIdElement = document.getElementById("cartId");
-    const statusElement = document.getElementById("status");
-    const previousMonth = document.getElementById("previousMonth");
-    const nextMonth = document.getElementById("nextMonth");
-    const productDialog = document.getElementById("productDialog");
-    const dialogTitle = document.getElementById("dialogTitle");
-    const dialogProducts = document.getElementById("dialogProducts");
-    const dialogHint = document.getElementById("dialogHint");
-    const closeDialog = document.getElementById("closeDialog");
-    const addSelectedProducts = document.getElementById("addSelectedProducts");
+    const state = {
+      step: "parks",
+      selectedPark: null,
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+      availability: [],
+      selectedDate: null,
+      selectedProductId: null,
+      ticketDialogOpen: false,
+      cartId: localStorage.getItem("parkTicketSystemCartId"),
+      cartItems: [],
+      loading: false,
+      status: ""
+    };
+
+    const app = document.querySelector("#app");
+    const statusEl = document.querySelector("#status");
+    const cartCountEl = document.querySelector("#cartCount");
+    const ticketDialogHost = document.querySelector("#ticketDialogHost");
+
+    const currency = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD"
+    });
 
     function money(value) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD"
-      }).format(value);
+      return currency.format(Number(value || 0));
     }
 
-    function setStatus(message) {
-      statusElement.textContent = message ?? "";
-    }
-
-    function monthName(year, month) {
-      return new Intl.DateTimeFormat("en-US", {
-        month: "long",
-        year: "numeric"
-      }).format(new Date(year, month - 1, 1));
+    function monthLabel(year, month) {
+      return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" })
+        .format(new Date(year, month - 1, 1));
     }
 
     function dateKey(year, month, day) {
       return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
 
-    async function changeMonth(monthOffset) {
-      const nextDate = new Date(selectedYear, selectedMonth - 1 + monthOffset, 1);
-      selectedYear = nextDate.getFullYear();
-      selectedMonth = nextDate.getMonth() + 1;
-      await loadAvailability();
-    }
-
-    async function loadAvailability() {
-      availabilityElement.innerHTML = `<div class="empty">Loading availability...</div>`;
-      calendarTitle.textContent = `${monthName(selectedYear, selectedMonth)} Tickets`;
-
-      const response = await fetch(`/api/parks/adventurebay/availability/${selectedYear}/${selectedMonth}`);
-      const availability = await response.json();
-
-      const ticketAvailability = availability
-        .filter(product => product.productId === "adventurebay-entry");
-      const availabilityByDate = new Map(ticketAvailability.map(product => [product.date, product]));
-      availabilityByDay = availability.reduce((map, product) => {
-        const products = map.get(product.date) ?? [];
-        products.push(product);
-        map.set(product.date, products);
-        return map;
-      }, new Map());
-      const firstDayOfMonth = new Date(selectedYear, selectedMonth - 1, 1).getDay();
-      const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-
-      availabilityElement.innerHTML = `
-        <div class="calendar" id="calendar">
-          <div class="weekday">Sun</div>
-          <div class="weekday">Mon</div>
-          <div class="weekday">Tue</div>
-          <div class="weekday">Wed</div>
-          <div class="weekday">Thu</div>
-          <div class="weekday">Fri</div>
-          <div class="weekday">Sat</div>
-        </div>
-      `;
-
-      const calendarElement = document.getElementById("calendar");
-
-      for (let index = 0; index < firstDayOfMonth; index += 1) {
-        const emptyDay = document.createElement("div");
-        emptyDay.className = "day empty-day";
-        calendarElement.appendChild(emptyDay);
-      }
-
-      for (let day = 1; day <= daysInMonth; day += 1) {
-        const date = dateKey(selectedYear, selectedMonth, day);
-        const product = availabilityByDate.get(date);
-        const isAvailable = product && product.availableTickets > 0;
-        const dayElement = document.createElement("button");
-        dayElement.type = "button";
-        dayElement.className = `day ${isAvailable ? "available" : "unavailable"}`;
-        dayElement.disabled = !isAvailable;
-
-        dayElement.innerHTML = isAvailable
-          ? `
-              <span class="day-number">${day}</span>
-              <span class="details">${money(product.price)}</span>
-              <span class="details">${product.availableTickets} available</span>
-            `
-          : `
-              <span class="day-number">${day}</span>
-              <span class="details">${product ? "Sold out" : "Unavailable"}</span>
-            `;
-
-        if (isAvailable) {
-          dayElement.addEventListener("click", () => openProductDialog(product.date));
-        }
-
-        calendarElement.appendChild(dayElement);
-      }
-    }
-
-    function openProductDialog(date) {
-      selectedDialogDate = date;
-      const products = (availabilityByDay.get(date) ?? [])
-        .filter(product => product.availableTickets > 0);
-
-      dialogTitle.textContent = `Products for ${date}`;
-      dialogProducts.innerHTML = "";
-      dialogHint.textContent = products.length === 0 ? "No products available." : "Choose one or more products.";
-      addSelectedProducts.disabled = products.length === 0;
-
-      for (const product of products) {
-        const option = document.createElement("label");
-        option.className = "product-option";
-        option.innerHTML = `
-          <input type="checkbox" value="${product.productId}">
-          <span>
-            <span class="name">${product.productName}</span>
-            <span class="details">${money(product.price)} | ${product.availableTickets} available</span>
-          </span>
-        `;
-        dialogProducts.appendChild(option);
-      }
-
-      productDialog.showModal();
-    }
-
-    function dateParts(date) {
+    function parseDate(date) {
       const [year, month, day] = date.split("-").map(Number);
       return { year, month, day };
     }
 
-    async function addItem(productId, date) {
-      setStatus("Adding item...");
-
-      const selectedDate = dateParts(date);
-      const endpoint = cartId ? `/api/cart/${cartId}/items` : "/api/cart/items";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId,
-          quantity: 1,
-          year: selectedDate.year,
-          month: selectedDate.month,
-          day: selectedDate.day
-        })
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        setStatus(`${result.failureCode}: ${result.message}`);
-        return;
-      }
-
-      cartId = result.cartId;
-      localStorage.setItem("ticketSystemCartId", cartId);
-      setStatus("Item added.");
-      await loadCart();
+    function setStatus(message) {
+      state.status = message;
+      statusEl.textContent = message;
     }
 
-    async function addSelectedItems() {
-      const selectedProducts = [...dialogProducts.querySelectorAll("input:checked")]
-        .map(input => input.value);
-
-      if (selectedProducts.length === 0 || !selectedDialogDate) {
-        setStatus("Select at least one product.");
-        return;
-      }
-
-      for (const productId of selectedProducts) {
-        await addItem(productId, selectedDialogDate);
-      }
-
-      productDialog.close();
+    function setStep(step) {
+      state.step = step;
+      state.ticketDialogOpen = false;
+      render();
     }
 
-    async function removeItem(productId, date) {
-      if (!cartId) {
-        return;
-      }
+    function icon(name) {
+      const paths = {
+        arrowLeft: '<path d="m15 18-6-6 6-6"></path>',
+        arrowRight: '<path d="m9 18 6-6-6-6"></path>',
+        calendar: '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path>',
+        trash: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 15H6L5 6"></path>',
+        user: '<path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle>',
+        x: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
+      };
 
-      setStatus("Removing item...");
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">${paths[name]}</svg>`;
+    }
 
-      const selectedDate = dateParts(date);
-      const response = await fetch(`/api/cart/${cartId}/items/${encodeURIComponent(productId)}/${selectedDate.year}/${selectedDate.month}/${selectedDate.day}`, {
-        method: "DELETE"
+    function updateChrome() {
+      document.querySelectorAll("[data-step]").forEach(step => {
+        step.classList.toggle("active", step.dataset.step === state.step);
       });
 
-      const result = await response.json();
+      const itemCount = state.cartItems.reduce((total, item) => total + item.quantity, 0);
+      cartCountEl.textContent = itemCount ? `Cart (${itemCount})` : "Cart";
+      statusEl.textContent = state.status;
+    }
 
-      if (!result.success) {
-        setStatus(`${result.failureCode}: ${result.message}`);
+    function render() {
+      updateChrome();
+
+      if (state.step === "parks") {
+        renderParks();
+      } else if (state.step === "date") {
+        renderDate();
+      } else if (state.step === "cart") {
+        renderCart();
+      } else {
+        renderHolders();
+      }
+
+      renderTicketDialog();
+    }
+
+    function renderParks() {
+      app.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <h2>Select a park</h2>
+            <p class="lede">Availability and prices are loaded after you choose where you want to visit.</p>
+          </div>
+        </div>
+        <div class="park-list">
+          ${PARKS.map(park => `
+            <button class="park-card" type="button" data-park="${park.uniqueName}">
+              <span>${park.accent}</span>
+              <strong>${park.name}</strong>
+              <span>${park.location}</span>
+              <span>${park.summary}</span>
+            </button>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderDate() {
+      const selectedParkName = state.selectedPark ? state.selectedPark.name : "Park";
+      const productsByDate = state.availability.reduce((map, product) => {
+        const existing = map.get(product.date) || [];
+        existing.push(product);
+        map.set(product.date, existing);
+        return map;
+      }, new Map());
+
+      const firstDay = new Date(state.year, state.month - 1, 1).getDay();
+      const daysInMonth = new Date(state.year, state.month, 0).getDate();
+      const cells = [];
+
+      for (let index = 0; index < firstDay; index += 1) {
+        cells.push('<div class="day empty" aria-hidden="true"></div>');
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const key = dateKey(state.year, state.month, day);
+        const products = productsByDate.get(key) || [];
+        const availableProducts = products.filter(product => product.availableTickets > 0);
+        const lowestPrice = availableProducts.reduce((lowest, product) => Math.min(lowest, Number(product.price)), Infinity);
+        const isAvailable = availableProducts.length > 0;
+        const isSelected = state.selectedDate === key;
+
+        cells.push(`
+          <button
+            class="day ${isAvailable ? "available" : "sold-out"} ${isSelected ? "selected" : ""}"
+            type="button"
+            data-date="${key}"
+            ${isAvailable ? "" : "disabled"}
+          >
+            <span class="day-number">${day}</span>
+            <span class="day-meta">${isAvailable ? `From ${money(lowestPrice)}` : products.length ? "Sold out" : "No tickets"}</span>
+            <span class="day-meta">${isAvailable ? `${availableProducts.length} ticket option${availableProducts.length === 1 ? "" : "s"}` : ""}</span>
+          </button>
+        `);
+      }
+
+      app.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <h2>${selectedParkName}</h2>
+            <p class="lede">Choose an available day, then select one ticket type in the dialog.</p>
+          </div>
+          <div class="toolbar">
+            <button class="button secondary" type="button" data-action="back-parks">${icon("arrowLeft")} Park</button>
+            <button class="icon-button" type="button" data-action="previous-month" aria-label="Previous month">${icon("arrowLeft")}</button>
+            <button class="icon-button" type="button" data-action="next-month" aria-label="Next month">${icon("arrowRight")}</button>
+          </div>
+        </div>
+
+        <div class="panel-header">
+          <div>
+            <h2>${monthLabel(state.year, state.month)}</h2>
+          </div>
+        </div>
+
+        ${state.loading ? '<div class="empty-state">Loading availability...</div>' : `
+          <div class="calendar">
+            ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => `<div class="weekday">${day}</div>`).join("")}
+            ${cells.join("")}
+          </div>
+        `}
+
+        <div class="selection-bar">
+          ${state.selectedDate ? `
+            <div class="selected-date-summary">
+              <div>
+                <h2>Selected date</h2>
+                <p class="lede">${formatSelectedDate()}</p>
+              </div>
+              <button class="button secondary" type="button" data-action="open-ticket-dialog">Choose Ticket Type</button>
+            </div>
+          ` : '<div class="empty-state">Select a highlighted date to choose a ticket type.</div>'}
+          <div class="toolbar">
+            <button class="button" type="button" data-action="go-cart">Continue to Cart</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function formatSelectedDate() {
+      if (!state.selectedDate) {
+        return "";
+      }
+
+      return new Date(`${state.selectedDate}T12:00:00`).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+
+    function selectedDateProducts() {
+      return state.availability
+        .filter(product => product.date === state.selectedDate && product.availableTickets > 0);
+    }
+
+    function renderTicketDialog() {
+      if (!state.ticketDialogOpen || !state.selectedDate) {
+        ticketDialogHost.hidden = true;
+        ticketDialogHost.innerHTML = "";
         return;
       }
 
-      setStatus("Item removed.");
-      await loadCart();
+      const products = selectedDateProducts();
+      ticketDialogHost.hidden = false;
+      ticketDialogHost.innerHTML = `
+        <div class="ticket-dialog" role="dialog" aria-modal="true" aria-labelledby="ticketDialogTitle">
+          <div class="dialog-header">
+            <div>
+              <h2 id="ticketDialogTitle">Select ticket type</h2>
+              <p class="lede">${formatSelectedDate()}</p>
+            </div>
+            <button class="icon-button" type="button" data-dialog-action="close" aria-label="Close ticket type dialog">
+              ${icon("x")}
+            </button>
+          </div>
+          <div class="dialog-body">
+            ${products.length ? `
+              <div class="product-list">
+                ${products.map(product => `
+                  <label class="product-option ${state.selectedProductId === product.productId ? "selected" : ""}">
+                    <input type="radio" name="dialog-product" value="${product.productId}" ${state.selectedProductId === product.productId ? "checked" : ""}>
+                    <span>
+                      <span class="product-title">${product.productName}</span>
+                      <span class="product-detail">${money(product.price)} each</span>
+                      <span class="product-detail">${product.availableTickets} available</span>
+                    </span>
+                  </label>
+                `).join("")}
+              </div>
+            ` : '<div class="empty-state">No ticket types are available for this date.</div>'}
+          </div>
+          <div class="dialog-footer">
+            <button class="button secondary" type="button" data-dialog-action="close">Cancel</button>
+            <button class="button" type="button" data-dialog-action="add-cart" ${state.selectedProductId ? "" : "disabled"}>Add to Cart</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCart() {
+      const total = state.cartItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+
+      app.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <h2>Your cart</h2>
+            <p class="lede">${state.cartId ? `Cart ${state.cartId}` : "No cart has been created yet."}</p>
+          </div>
+          <div class="toolbar">
+            <button class="button secondary" type="button" data-action="back-tickets">${icon("calendar")} Tickets</button>
+          </div>
+        </div>
+
+        ${state.cartItems.length ? `
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Date</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th><span class="desktop-only">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${state.cartItems.map(item => `
+                <tr>
+                  <td>${item.productId}</td>
+                  <td>${item.visitDate}</td>
+                  <td>${item.quantity}</td>
+                  <td>${money(item.price)}</td>
+                  <td>${money(item.lineTotal)}</td>
+                  <td>
+                    <button class="icon-button" type="button" data-remove-product="${item.productId}" data-remove-date="${item.visitDate}" aria-label="Remove ${item.productId}">
+                      ${icon("trash")}
+                    </button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="cart-total">Total ${money(total)}</div>
+          <div class="toolbar" style="margin-top: 18px;">
+            <button class="button" type="button" data-action="fill-info">${icon("user")} Fill Info</button>
+          </div>
+        ` : `
+          <div class="empty-state">Your cart is empty. Go back to tickets to add admission or add-ons.</div>
+        `}
+      `;
+    }
+
+    function renderHolders() {
+      app.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <h2>Ticket names</h2>
+            <p class="lede">Add the name and email address for each ticket in the cart.</p>
+          </div>
+          <div class="toolbar">
+            <button class="button secondary" type="button" data-action="go-cart">${icon("arrowLeft")} Cart</button>
+          </div>
+        </div>
+
+        ${state.cartItems.length ? `
+          <div class="holder-list">
+            ${state.cartItems.map((item, index) => `
+              <section class="holder-card" data-holder-card="${item.id}">
+                <div class="holder-card-header">
+                  <div>
+                    <h2>Ticket ${index + 1}</h2>
+                    <p class="lede">${item.productId} for ${item.visitDate} · ${money(item.price)}</p>
+                  </div>
+                </div>
+                <div class="holder-fields">
+                  <label class="field">
+                    First name
+                    <input data-holder-field="firstName" data-cart-item-id="${item.id}" value="${item.ticketHolderFirstName ?? ""}" autocomplete="given-name" required>
+                  </label>
+                  <label class="field">
+                    Last name
+                    <input data-holder-field="lastName" data-cart-item-id="${item.id}" value="${item.ticketHolderLastName ?? ""}" autocomplete="family-name" required>
+                  </label>
+                  <label class="field">
+                    Email
+                    <input data-holder-field="email" data-cart-item-id="${item.id}" value="${item.ticketHolderEmail ?? ""}" type="email" autocomplete="email" required>
+                  </label>
+                </div>
+              </section>
+            `).join("")}
+          </div>
+          <div class="toolbar" style="margin-top: 18px;">
+            <button class="button" type="button" data-action="save-holders">Save Names</button>
+          </div>
+        ` : `
+          <div class="empty-state">Your cart is empty. Go back to tickets to add admission or add-ons.</div>
+        `}
+      `;
+    }
+
+    async function loadAvailability() {
+      if (!state.selectedPark) {
+        return;
+      }
+
+      state.loading = true;
+      state.availability = [];
+      render();
+
+      try {
+        const response = await fetch(`/api/parks/${state.selectedPark.uniqueName}/availability/${state.year}/${state.month}`);
+
+        if (!response.ok) {
+          throw new Error("Availability request failed.");
+        }
+
+        state.availability = await response.json();
+        setStatus("");
+      } catch (error) {
+        state.availability = [];
+        setStatus("Availability could not be loaded. Please try another month.");
+      } finally {
+        state.loading = false;
+        render();
+      }
     }
 
     async function loadCart() {
-      cartIdElement.textContent = cartId ? `Cart id: ${cartId}` : "No cart yet";
-
-      if (!cartId) {
-        cartElement.innerHTML = `<div class="empty">Your cart is empty.</div>`;
+      if (!state.cartId) {
+        state.cartItems = [];
+        render();
         return;
       }
 
-      const response = await fetch(`/api/cart/${cartId}/items`);
-      const items = await response.json();
+      try {
+        const response = await fetch(`/api/cart/${state.cartId}/items`);
 
-      if (items.length === 0) {
-        cartElement.innerHTML = `<div class="empty">Your cart is empty.</div>`;
+        if (!response.ok) {
+          throw new Error("Cart request failed.");
+        }
+
+        state.cartItems = await response.json();
+      } catch (error) {
+        state.cartItems = [];
+        setStatus("Cart could not be loaded.");
+      }
+
+      render();
+    }
+
+    async function addSelectedTicketToCart() {
+      if (!state.selectedDate || !state.selectedProductId) {
         return;
       }
 
-      cartElement.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Date</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Total</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      `;
+      setStatus("Adding ticket to cart...");
+      const date = parseDate(state.selectedDate);
+      const endpoint = state.cartId ? `/api/cart/${state.cartId}/items` : "/api/cart/items";
 
-      const body = cartElement.querySelector("tbody");
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: state.selectedProductId,
+            quantity: 1,
+            year: date.year,
+            month: date.month,
+            day: date.day
+          })
+        });
 
-      for (const item of items) {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${item.productId}</td>
-          <td>${item.visitDate}</td>
-          <td>${item.quantity}</td>
-          <td>${money(item.price)}</td>
-          <td>${money(item.lineTotal)}</td>
-          <td><button class="secondary" type="button">Remove</button></td>
-        `;
+        const result = await response.json();
 
-        row.querySelector("button").addEventListener("click", () => removeItem(item.productId, item.visitDate));
-        body.appendChild(row);
+        if (!result.success) {
+          setStatus(result.message || "This ticket could not be added.");
+          return;
+        }
+
+        state.cartId = result.cartId;
+        localStorage.setItem("parkTicketSystemCartId", state.cartId);
+        state.ticketDialogOpen = false;
+        state.selectedProductId = null;
+        setStatus("Ticket added.");
+        await loadCart();
+      } catch (error) {
+        setStatus("Cart could not be updated.");
       }
     }
 
-    closeDialog.addEventListener("click", () => productDialog.close());
-    addSelectedProducts.addEventListener("click", addSelectedItems);
-    previousMonth.addEventListener("click", () => changeMonth(-1));
-    nextMonth.addEventListener("click", () => changeMonth(1));
-    window.addEventListener("keydown", event => {
-      if (productDialog.open) {
+    async function removeCartItem(productId, visitDate) {
+      if (!state.cartId) {
         return;
       }
 
-      if (event.key === "ArrowLeft") {
-        changeMonth(-1);
+      setStatus("Removing ticket...");
+      const date = parseDate(visitDate);
+
+      try {
+        const response = await fetch(
+          `/api/cart/${state.cartId}/items/${encodeURIComponent(productId)}/${date.year}/${date.month}/${date.day}`,
+          { method: "DELETE" }
+        );
+        const result = await response.json();
+
+        if (!result.success) {
+          setStatus(result.message || "This ticket could not be removed.");
+          return;
+        }
+
+        setStatus("Ticket removed.");
+        await loadCart();
+      } catch (error) {
+        setStatus("Cart could not be updated.");
+      }
+    }
+
+    async function saveTicketHolders() {
+      if (!state.cartId || state.cartItems.length === 0) {
+        return;
       }
 
-      if (event.key === "ArrowRight") {
+      const cards = [...app.querySelectorAll("[data-holder-card]")];
+
+      for (const card of cards) {
+        const cartItemId = card.dataset.holderCard;
+        const firstName = card.querySelector('[data-holder-field="firstName"]').value.trim();
+        const lastName = card.querySelector('[data-holder-field="lastName"]').value.trim();
+        const email = card.querySelector('[data-holder-field="email"]').value.trim();
+
+        if (!firstName || !lastName || !email) {
+          setStatus("Fill out first name, last name, and email for every ticket.");
+          return;
+        }
+
+        setStatus("Saving ticket names...");
+
+        try {
+          const response = await fetch(`/api/cart/${state.cartId}/items/${cartItemId}/holder`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ firstName, lastName, email })
+          });
+          const result = await response.json();
+
+          if (!result.success) {
+            setStatus(result.message || "Ticket names could not be saved.");
+            return;
+          }
+        } catch (error) {
+          setStatus("Ticket names could not be saved.");
+          return;
+        }
+      }
+
+      setStatus("Ticket names saved.");
+      state.step = "cart";
+      await loadCart();
+    }
+
+    function changeMonth(offset) {
+      const next = new Date(state.year, state.month - 1 + offset, 1);
+      state.year = next.getFullYear();
+      state.month = next.getMonth() + 1;
+      state.selectedDate = null;
+      state.selectedProductId = null;
+      state.ticketDialogOpen = false;
+      loadAvailability();
+    }
+
+    app.addEventListener("click", event => {
+      const parkButton = event.target.closest("[data-park]");
+      const dateButton = event.target.closest("[data-date]");
+      const actionButton = event.target.closest("[data-action]");
+      const removeButton = event.target.closest("[data-remove-product]");
+
+      if (parkButton) {
+        state.selectedPark = PARKS.find(park => park.uniqueName === parkButton.dataset.park);
+        state.step = "date";
+        state.selectedDate = null;
+        state.selectedProductId = null;
+        state.ticketDialogOpen = false;
+        loadAvailability();
+        return;
+      }
+
+      if (dateButton) {
+        state.selectedDate = dateButton.dataset.date;
+        state.selectedProductId = null;
+        state.ticketDialogOpen = true;
+        render();
+        return;
+      }
+
+      if (removeButton) {
+        removeCartItem(removeButton.dataset.removeProduct, removeButton.dataset.removeDate);
+        return;
+      }
+
+      if (!actionButton) {
+        return;
+      }
+
+      const action = actionButton.dataset.action;
+
+      if (action === "back-parks") {
+        setStep("parks");
+      } else if (action === "previous-month") {
+        changeMonth(-1);
+      } else if (action === "next-month") {
         changeMonth(1);
+      } else if (action === "go-cart") {
+        state.step = "cart";
+        state.ticketDialogOpen = false;
+        loadCart();
+      } else if (action === "open-ticket-dialog") {
+        state.ticketDialogOpen = true;
+        render();
+      } else if (action === "back-tickets") {
+        setStep(state.selectedPark ? "date" : "parks");
+      } else if (action === "fill-info") {
+        state.step = "holders";
+        render();
+      } else if (action === "save-holders") {
+        saveTicketHolders();
       }
     });
 
-    loadAvailability();
+    ticketDialogHost.addEventListener("click", event => {
+      const dialogAction = event.target.closest("[data-dialog-action]");
+
+      if (event.target === ticketDialogHost) {
+        state.ticketDialogOpen = false;
+        render();
+        return;
+      }
+
+      if (!dialogAction) {
+        return;
+      }
+
+      if (dialogAction.dataset.dialogAction === "close") {
+        state.ticketDialogOpen = false;
+        render();
+      } else if (dialogAction.dataset.dialogAction === "add-cart") {
+        addSelectedTicketToCart();
+      }
+    });
+
+    ticketDialogHost.addEventListener("change", event => {
+      if (event.target.matches('input[name="dialog-product"]')) {
+        state.selectedProductId = event.target.value;
+        render();
+      }
+    });
+
+    document.querySelector('[data-action="go-cart"]').addEventListener("click", () => {
+      state.step = "cart";
+      state.ticketDialogOpen = false;
+      loadCart();
+    });
+
     loadCart();
+    render();
   </script>
 </body>
 </html>

@@ -43,6 +43,20 @@ public sealed class ShoppingController : ControllerBase
         return Ok(_shoppingService.GetCartItems(cartId));
     }
 
+    [HttpPost("{cartId:guid}/items/{cartItemId:guid}/holder")]
+    public ActionResult<AssignTicketHolderResult> AssignTicketHolder(
+        Guid cartId,
+        Guid cartItemId,
+        AssignTicketHolderRequest request)
+    {
+        return Ok(_shoppingService.AssignTicketHolder(
+            cartId,
+            cartItemId,
+            request.FirstName,
+            request.LastName,
+            request.Email));
+    }
+
     [HttpDelete("{cartId:guid}/items/{productId}/{year:int}/{month:int}/{day:int}")]
     public ActionResult<RemoveFromCartResult> RemoveFromCart(
         Guid cartId,
@@ -55,4 +69,6 @@ public sealed class ShoppingController : ControllerBase
     }
 
     public sealed record AddToCartRequest(string ProductId, int Quantity, int Year, int Month, int Day);
+
+    public sealed record AssignTicketHolderRequest(string FirstName, string LastName, string Email);
 }

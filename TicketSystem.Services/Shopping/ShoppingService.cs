@@ -78,13 +78,43 @@ public sealed class ShoppingService
 
         return cart.Items
             .Select(cartItem => new CartItemDto(
+                cartItem.Id,
                 cartItem.ProductId,
                 cartItem.ParkUniqueName,
                 cartItem.VisitDate,
                 cartItem.Quantity,
                 cartItem.Price,
-                cartItem.LineTotal))
+                cartItem.LineTotal,
+                cartItem.TicketHolder?.FirstName,
+                cartItem.TicketHolder?.LastName,
+                cartItem.TicketHolder?.Email))
             .ToArray();
+    }
+
+    public AssignTicketHolderResult AssignTicketHolder(
+        Guid cartId,
+        Guid cartItemId,
+        string firstName,
+        string lastName,
+        string email)
+    {
+        var cart = _cartRepository.GetById(cartId);
+
+        if (cart is null)
+        {
+            return AssignTicketHolderResult.Failed("CartNotFound", $"Cart '{cartId}' was not found.");
+        }
+
+        var ticketHolder = new TicketHolder(firstName, lastName, email);
+
+        if (!cart.AssignTicketHolder(cartItemId, ticketHolder))
+        {
+            return AssignTicketHolderResult.Failed("ItemNotFound", $"Cart item '{cartItemId}' was not found in cart.");
+        }
+
+        _cartRepository.Save(cart);
+
+        return AssignTicketHolderResult.Succeeded();
     }
 
     public RemoveFromCartResult RemoveFromCart(Guid cartId, string productId)
