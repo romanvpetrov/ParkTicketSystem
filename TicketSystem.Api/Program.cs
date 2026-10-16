@@ -1,3 +1,5 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using OpenTelemetry;
 using TicketSystem.Domain.Repositories;
 using TicketSystem.Infrastructure.Parks;
 using TicketSystem.Infrastructure.Shopping;
@@ -7,6 +9,21 @@ using TicketSystem.Services.Shopping;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    var samplingRatio = Math.Clamp(
+        builder.Configuration.GetValue<float?>("AzureMonitor:SamplingRatio") ?? 1.0F,
+        0.0F,
+        1.0F);
+
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(options =>
+    {
+        options.SamplingRatio = samplingRatio;
+        options.TracesPerSecond = null;
+    });
+}
+
 builder.Services.AddSingleton<InMemoryParkRepository>();
 builder.Services.AddSingleton<IParkRepository>(serviceProvider => serviceProvider.GetRequiredService<InMemoryParkRepository>());
 builder.Services.AddSingleton<ICartRepository, InMemoryCartRepository>();
