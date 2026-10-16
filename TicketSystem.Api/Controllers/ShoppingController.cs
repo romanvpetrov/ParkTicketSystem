@@ -57,6 +57,14 @@ public sealed class ShoppingController : ControllerBase
             request.Email));
     }
 
+    [HttpPost("{cartId:guid}/paid")]
+    public async Task<ActionResult<MarkPaidResult>> MarkPaid(
+        Guid cartId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _shoppingService.MarkPaidAsync(cartId, cancellationToken));
+    }
+
     [HttpDelete("{cartId:guid}/items/{productId}/{year:int}/{month:int}/{day:int}")]
     public ActionResult<RemoveFromCartResult> RemoveFromCart(
         Guid cartId,

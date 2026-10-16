@@ -7,11 +7,22 @@ public sealed class ShoppingService
 {
     private readonly ICartRepository _cartRepository;
     private readonly IParkRepository _parkRepository;
+    private readonly ITicketRepository _ticketRepository;
+    private readonly IEmailService _emailService;
+    private readonly TicketEmailService _ticketEmailService;
 
-    public ShoppingService(ICartRepository cartRepository, IParkRepository parkRepository)
+    public ShoppingService(
+        ICartRepository cartRepository,
+        IParkRepository parkRepository,
+        ITicketRepository ticketRepository,
+        IEmailService emailService,
+        TicketEmailService ticketEmailService)
     {
         _cartRepository = cartRepository;
         _parkRepository = parkRepository;
+        _ticketRepository = ticketRepository;
+        _emailService = emailService;
+        _ticketEmailService = ticketEmailService;
     }
 
     public AddToCartResult AddToCart(string productId, int quantity)
@@ -115,6 +126,63 @@ public sealed class ShoppingService
         _cartRepository.Save(cart);
 
         return AssignTicketHolderResult.Succeeded();
+    }
+
+    public async Task<MarkPaidResult> MarkPaidAsync(
+        Guid cartId,
+        CancellationToken cancellationToken = default)
+    {
+        var cart = _cartRepository.GetById(cartId);
+
+        if (cart is null)
+        {
+            return MarkPaidResult.Failed("CartNotFound", $"Cart '{cartId}' was not found.");
+        }
+
+        var paymentResult = cart.MarkPaid();
+
+        if (!paymentResult.Success)
+        {
+            return paymentResult.FailureCode switch
+            {
+                "CartAlreadyPaid" => MarkPaidResult.Failed("CartAlreadyPaid", "The cart has already been paid."),
+                "CartIsEmpty" => MarkPaidResult.Failed("CartIsEmpty", "The cart does not contain any tickets."),
+                "TicketHolderRequired" => MarkPaidResult.Failed(
+                    "TicketHolderRequired",
+                    "Every ticket must have a ticket holder before payment can be completed."),
+                _ => MarkPaidResult.Failed("PaymentFailed", "The cart could not be marked as paid.")
+            };
+        }
+
+        _cartRepository.Save(cart);
+
+        foreach (var ticket in paymentResult.Tickets)
+        {
+            _ticketRepository.Save(ticket);
+            var email = _ticketEmailService.Create(ticket);
+            await _emailService.SendAsync(
+                email.SenderEmail,
+                email.ReceiverEmail,
+                email.Subject,
+                email.PlainText,
+                email.Html,
+                cancellationToken);
+        }
+
+        var tickets = paymentResult.Tickets
+            .Select(ticket => new TicketDto(
+                ticket.Id,
+                ticket.CartItemId,
+                ticket.ProductId,
+                ticket.ParkUniqueName,
+                ticket.VisitDate,
+                ticket.Price,
+                ticket.FirstName,
+                ticket.LastName,
+                ticket.Email))
+            .ToArray();
+
+        return MarkPaidResult.Succeeded(tickets);
     }
 
     public RemoveFromCartResult RemoveFromCart(Guid cartId, string productId)

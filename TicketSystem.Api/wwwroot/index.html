@@ -111,9 +111,13 @@
     }
 
     .cart-pill svg,
-    .icon-button svg {
+    .icon-button svg,
+    .button svg,
+    .eyebrow svg,
+    .ticket-meta svg {
       width: 18px;
       height: 18px;
+      flex: 0 0 18px;
       stroke-width: 2.2;
     }
 
@@ -142,6 +146,9 @@
 
     .eyebrow {
       margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 7px;
       color: #ffe48a;
       font-size: 13px;
       font-weight: 850;
@@ -294,6 +301,11 @@
       background: var(--navy);
       color: #fff;
       font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .button svg {
+      stroke-width: 2;
     }
 
     .button.secondary {
@@ -533,6 +545,158 @@
       border-style: solid;
     }
 
+    .payment-summary {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .payment-summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .payment-summary-row + .payment-summary-row {
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .payment-summary-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .payment-summary-total {
+      color: var(--navy);
+      font-size: 24px;
+      font-weight: 850;
+    }
+
+    .payment-action {
+      min-width: 190px;
+    }
+
+    .payment-success-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .success-mark {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      flex: 0 0 48px;
+      place-items: center;
+      border-radius: 50%;
+      background: #e4f5f1;
+      color: #08786f;
+    }
+
+    .success-mark svg {
+      width: 25px;
+      height: 25px;
+      stroke-width: 2.4;
+    }
+
+    .payment-success-header .eyebrow {
+      margin-bottom: 5px;
+      color: #08786f;
+    }
+
+    .payment-success-header h2,
+    .ticket-receipt h3 {
+      margin: 0;
+    }
+
+    .ticket-receipt-list {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .ticket-receipt {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .ticket-receipt + .ticket-receipt {
+      border-top: 1px solid var(--line);
+    }
+
+    .ticket-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #eaf6f6;
+      color: var(--teal);
+    }
+
+    .ticket-mark svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    .ticket-details {
+      min-width: 0;
+    }
+
+    .ticket-details h3 {
+      color: var(--navy);
+      font-size: 16px;
+    }
+
+    .ticket-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .ticket-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ticket-meta svg {
+      width: 15px;
+      height: 15px;
+      flex-basis: 15px;
+    }
+
+    .ticket-reference {
+      display: block;
+      max-width: 240px;
+      margin-top: 7px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ticket-price {
+      color: var(--navy);
+      font-weight: 850;
+    }
+
     .dialog-backdrop {
       position: fixed;
       inset: 0;
@@ -608,7 +772,7 @@
 
       .steps {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
       }
 
       .step {
@@ -658,6 +822,18 @@
 
       .holder-fields {
         grid-template-columns: 1fr;
+      }
+
+      .ticket-receipt {
+        grid-template-columns: 42px minmax(0, 1fr);
+      }
+
+      .ticket-price {
+        grid-column: 2;
+      }
+
+      .payment-action {
+        width: 100%;
       }
 
       .calendar {
@@ -718,6 +894,7 @@
           <div class="step" data-step="date"><span class="step-number">2</span><span>Date & tickets</span></div>
           <div class="step" data-step="cart"><span class="step-number">3</span><span>Cart</span></div>
           <div class="step" data-step="holders"><span class="step-number">4</span><span>Names</span></div>
+          <div class="step" data-step="payment"><span class="step-number">5</span><span>Payment</span></div>
         </aside>
 
         <section class="panel" id="app" aria-live="polite"></section>
@@ -751,6 +928,7 @@
       ticketDialogOpen: false,
       cartId: localStorage.getItem("parkTicketSystemCartId"),
       cartItems: [],
+      issuedTickets: [],
       loading: false,
       status: ""
     };
@@ -801,10 +979,14 @@
         calendar: '<path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path>',
         trash: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 15H6L5 6"></path>',
         user: '<path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle>',
+        card: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path>',
+        check: '<path d="m5 12 4 4L19 6"></path>',
+        mail: '<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path>',
+        ticket: '<path d="M2 9a3 3 0 0 0 0 6v4h20v-4a3 3 0 0 0 0-6V5H2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path>',
         x: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
       };
 
-      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">${paths[name]}</svg>`;
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
     }
 
     function updateChrome() {
@@ -826,8 +1008,10 @@
         renderDate();
       } else if (state.step === "cart") {
         renderCart();
-      } else {
+      } else if (state.step === "holders") {
         renderHolders();
+      } else {
+        renderPayment();
       }
 
       renderTicketDialog();
@@ -1091,11 +1275,75 @@
             `).join("")}
           </div>
           <div class="toolbar" style="margin-top: 18px;">
-            <button class="button" type="button" data-action="save-holders">Save Names</button>
+            <button class="button" type="button" data-action="save-holders">Continue to Payment ${icon("arrowRight")}</button>
           </div>
         ` : `
           <div class="empty-state">Your cart is empty. Go back to tickets to add admission or add-ons.</div>
         `}
+      `;
+    }
+
+    function renderPayment() {
+      if (state.issuedTickets.length) {
+        app.innerHTML = `
+          <div class="payment-success-header">
+            <span class="success-mark">${icon("check")}</span>
+            <div>
+              <p class="eyebrow">Payment complete</p>
+              <h2>Your tickets are ready</h2>
+              <p class="lede">Each ticket was created and sent to its ticket holder.</p>
+            </div>
+          </div>
+          <div class="ticket-receipt-list">
+            ${state.issuedTickets.map(ticket => `
+              <article class="ticket-receipt">
+                <span class="ticket-mark">${icon("ticket")}</span>
+                <div class="ticket-details">
+                  <h3>${ticket.firstName} ${ticket.lastName}</h3>
+                  <div class="ticket-meta">
+                    <span>${icon("calendar")} ${ticket.visitDate}</span>
+                    <span>${icon("mail")} ${ticket.email}</span>
+                  </div>
+                  <code class="ticket-reference" title="Ticket ${ticket.id}">${ticket.id}</code>
+                </div>
+                <span class="ticket-price">${money(ticket.price)}</span>
+              </article>
+            `).join("")}
+          </div>
+          <div class="toolbar" style="margin-top: 18px;">
+            <button class="button" type="button" data-action="start-over">Buy More Tickets</button>
+          </div>
+        `;
+        return;
+      }
+
+      const total = state.cartItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+
+      app.innerHTML = `
+        <div class="panel-header">
+          <div>
+            <h2>Complete payment</h2>
+            <p class="lede">Confirm the test payment to create and email ${state.cartItems.length} ticket${state.cartItems.length === 1 ? "" : "s"}.</p>
+          </div>
+          <div class="toolbar">
+            <button class="button secondary" type="button" data-action="back-holders">${icon("arrowLeft")} Names</button>
+          </div>
+        </div>
+        <div class="payment-summary">
+          <div class="payment-summary-row">
+            <span class="payment-summary-label">Tickets</span>
+            <strong>${state.cartItems.length}</strong>
+          </div>
+          <div class="payment-summary-row">
+            <span class="payment-summary-label">Total</span>
+            <strong class="payment-summary-total">${money(total)}</strong>
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top: 18px;">
+          <button class="button coral payment-action" type="button" data-action="mark-paid" ${state.loading ? "disabled" : ""}>
+            ${icon("card")} ${state.loading ? "Processing..." : "Complete Payment"}
+          </button>
+        </div>
       `;
     }
 
@@ -1255,8 +1503,54 @@
       }
 
       setStatus("Ticket names saved.");
-      state.step = "cart";
+      state.step = "payment";
       await loadCart();
+    }
+
+    async function markCartPaid() {
+      if (!state.cartId || state.loading) {
+        return;
+      }
+
+      state.loading = true;
+      setStatus("Completing payment and sending tickets...");
+      render();
+
+      try {
+        const response = await fetch(`/api/cart/${state.cartId}/paid`, { method: "POST" });
+
+        if (!response.ok) {
+          throw new Error("Payment request failed.");
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setStatus(result.message || "Payment could not be completed.");
+          return;
+        }
+
+        state.issuedTickets = result.tickets;
+        state.cartId = null;
+        state.cartItems = [];
+        localStorage.removeItem("parkTicketSystemCartId");
+        setStatus("Payment completed. Tickets were sent.");
+      } catch (error) {
+        setStatus("Payment could not be completed.");
+      } finally {
+        state.loading = false;
+        render();
+      }
+    }
+
+    function startOver() {
+      state.step = "parks";
+      state.selectedPark = null;
+      state.selectedDate = null;
+      state.selectedProductId = null;
+      state.issuedTickets = [];
+      setStatus("");
+      render();
     }
 
     function changeMonth(offset) {
@@ -1324,6 +1618,12 @@
         render();
       } else if (action === "save-holders") {
         saveTicketHolders();
+      } else if (action === "back-holders") {
+        setStep("holders");
+      } else if (action === "mark-paid") {
+        markCartPaid();
+      } else if (action === "start-over") {
+        startOver();
       }
     });
 

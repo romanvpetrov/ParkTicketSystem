@@ -20,7 +20,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 79.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
         var result = shoppingService.AddToCart("adventurebay-entry", 3, 2026, 7, 1);
 
@@ -62,7 +62,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 89.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
         var firstResult = shoppingService.AddToCart("adventurebay-entry", 2, 2026, 7, 1);
         shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 1, 2026, 7, 2);
@@ -104,7 +104,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 79.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
         var firstResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
         shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
@@ -146,7 +146,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 79.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
         var addResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
         shoppingService.AddToCart(addResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
         var addedCartItems = shoppingService.GetCartItems(addResult.CartId);
@@ -205,7 +205,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 79.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
         var missingCartId = Guid.NewGuid();
 
         var result = shoppingService.AddToCart(missingCartId, "adventurebay-entry", 2, 2026, 7, 1);
@@ -240,7 +240,7 @@ public class ShoppingServiceTests
                 5,
                 4,
                 29.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
         var result = shoppingService.AddToCart("adventurebay-food", 2, 2026, 7, 1);
 
@@ -264,7 +264,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 79.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
         var addResult = shoppingService.AddToCart("adventurebay-entry", 3, 2026, 7, 1);
 
         var removeResult = shoppingService.RemoveFromCart(addResult.CartId, "adventurebay-entry", 2026, 7, 1);
@@ -296,7 +296,7 @@ public class ShoppingServiceTests
                 10,
                 0,
                 29.99m));
-        var shoppingService = new ShoppingService(cartRepository, parkRepository);
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
         var addResult = shoppingService.AddToCart("adventurebay-entry", 2, 2026, 7, 1);
         shoppingService.AddToCart(addResult.CartId, "adventurebay-food", 1, 2026, 7, 1);
 
@@ -315,6 +315,80 @@ public class ShoppingServiceTests
         Assert.Equal(1, remainingItem.Quantity);
         Assert.Equal(29.99m, remainingItem.Price);
         Assert.Equal(29.99m, remainingItem.LineTotal);
+    }
+
+    [Fact]
+    public async Task MarkPaid_CreatesTicketAndEmailsItToTheTicketHolder()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Park Ticket",
+                new DateOnly(2026, 7, 1),
+                10,
+                0,
+                79.99m));
+        var ticketRepository = new StubTicketRepository();
+        var emailService = new StubEmailService();
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            new TicketEmailService("tickets@parkticketsystem.test"));
+
+        var addResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
+        var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
+        shoppingService.AssignTicketHolder(
+            addResult.CartId,
+            cartItem.Id,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+
+        var result = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.True(result.Success);
+        Assert.Null(result.FailureCode);
+        Assert.Null(result.Message);
+
+        var ticket = Assert.Single(result.Tickets);
+        Assert.NotEqual(Guid.Empty, ticket.Id);
+        Assert.Equal(cartItem.Id, ticket.CartItemId);
+        Assert.Equal("adventurebay-entry", ticket.ProductId);
+        Assert.Equal("adventurebay", ticket.ParkUniqueName);
+        Assert.Equal(new DateOnly(2026, 7, 1), ticket.VisitDate);
+        Assert.Equal(79.99m, ticket.Price);
+        Assert.Equal("Ryan", ticket.FirstName);
+        Assert.Equal("Peterson", ticket.LastName);
+        Assert.Equal("ryan@example.com", ticket.Email);
+
+        var savedTicket = ticketRepository.GetById(ticket.Id);
+        Assert.NotNull(savedTicket);
+        Assert.Equal("Ryan", savedTicket.FirstName);
+        Assert.Equal("Peterson", savedTicket.LastName);
+        Assert.Equal("ryan@example.com", savedTicket.Email);
+
+        var email = Assert.Single(emailService.SentEmails);
+        Assert.Equal("tickets@parkticketsystem.test", email.SenderEmail);
+        Assert.Equal("ryan@example.com", email.ReceiverEmail);
+        Assert.Equal("Your ticket for July 1, 2026", email.Subject);
+        Assert.Contains(ticket.Id.ToString(), email.PlainText);
+        Assert.Contains(ticket.Id.ToString(), email.Html);
+    }
+
+    private static ShoppingService CreateShoppingService(
+        ICartRepository cartRepository,
+        IParkRepository parkRepository)
+    {
+        return new ShoppingService(
+            cartRepository,
+            parkRepository,
+            new StubTicketRepository(),
+            new StubEmailService(),
+            new TicketEmailService("tickets@parkticketsystem.test"));
     }
 
     private sealed class StubCartRepository : ICartRepository
@@ -340,6 +414,40 @@ public class ShoppingServiceTests
         public Park? GetByUniqueName(string uniqueName)
         {
             return _park.UniqueName == uniqueName ? _park : null;
+        }
+    }
+
+    private sealed class StubTicketRepository : ITicketRepository
+    {
+        private readonly Dictionary<Guid, Ticket> _tickets = [];
+
+        public Ticket? GetById(Guid ticketId)
+        {
+            return _tickets.GetValueOrDefault(ticketId);
+        }
+
+        public void Save(Ticket ticket)
+        {
+            _tickets[ticket.Id] = ticket;
+        }
+    }
+
+    private sealed class StubEmailService : IEmailService
+    {
+        private readonly List<TicketEmail> _sentEmails = [];
+
+        public IReadOnlyList<TicketEmail> SentEmails => _sentEmails;
+
+        public Task SendAsync(
+            string senderEmail,
+            string receiverEmail,
+            string subject,
+            string plainText,
+            string html,
+            CancellationToken cancellationToken = default)
+        {
+            _sentEmails.Add(new TicketEmail(senderEmail, receiverEmail, subject, plainText, html));
+            return Task.CompletedTask;
         }
     }
 }

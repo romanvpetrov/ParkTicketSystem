@@ -63,6 +63,26 @@ public sealed class CartItem
         TicketHolder = ticketHolder;
     }
 
+    public Ticket CreateTicket(Guid cartId)
+    {
+        if (TicketHolder is null)
+        {
+            throw new InvalidOperationException("A ticket holder must be assigned before creating a ticket.");
+        }
+
+        return new Ticket(
+            Guid.NewGuid(),
+            cartId,
+            Id,
+            ProductId,
+            ParkUniqueName,
+            VisitDate,
+            Price,
+            TicketHolder.FirstName,
+            TicketHolder.LastName,
+            TicketHolder.Email);
+    }
+
     public CartItem IncreaseQuantityBy(int quantity)
     {
         return new CartItem(Id, ProductId, ParkUniqueName, VisitDate, Quantity + quantity, Price);

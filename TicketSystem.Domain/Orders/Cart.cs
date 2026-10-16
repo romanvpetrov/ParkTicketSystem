@@ -18,6 +18,8 @@ public sealed class Cart
 
     public IReadOnlyList<CartItem> Items => _items;
 
+    public bool IsPaid { get; private set; }
+
     public void AddItem(CartItem item)
     {
         _items.Add(item);
@@ -51,5 +53,32 @@ public sealed class Cart
         item.AssignTicketHolder(ticketHolder);
 
         return true;
+    }
+
+    public CartPaymentResult MarkPaid()
+    {
+        if (IsPaid)
+        {
+            return CartPaymentResult.Failed("CartAlreadyPaid");
+        }
+
+        if (_items.Count == 0)
+        {
+            return CartPaymentResult.Failed("CartIsEmpty");
+        }
+
+        if (_items.Any(item => item.TicketHolder is null))
+        {
+            return CartPaymentResult.Failed("TicketHolderRequired");
+        }
+
+        var tickets = _items
+            .SelectMany(item => Enumerable.Range(0, item.Quantity)
+                .Select(_ => item.CreateTicket(Id)))
+            .ToArray();
+
+        IsPaid = true;
+
+        return CartPaymentResult.Succeeded(tickets);
     }
 }
