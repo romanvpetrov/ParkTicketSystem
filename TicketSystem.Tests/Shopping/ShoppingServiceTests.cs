@@ -3,6 +3,7 @@ namespace TicketSystem.Tests.Shopping;
 using TicketSystem.Domain.Orders;
 using TicketSystem.Domain.Parks;
 using TicketSystem.Domain.Repositories;
+using TicketSystem.Services.Parks;
 using TicketSystem.Services.Shopping;
 
 public class ShoppingServiceTests
@@ -379,6 +380,42 @@ public class ShoppingServiceTests
         Assert.Contains(ticket.Id.ToString(), email.Html);
     }
 
+    [Fact]
+    public async Task MarkPaid_UpdatesParkInventoryForPurchasedTicketTypes()
+    {
+        var visitDate = new DateOnly(2026, 7, 1);
+        var otherDate = new DateOnly(2026, 7, 2);
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory("adventurebay-entry", "adventurebay", "Park Ticket", visitDate, 10, 2, 79.99m),
+            new DailyInventory("adventurebay-food", "adventurebay", "Food Pass", visitDate, 10, 1, 29.99m),
+            new DailyInventory("adventurebay-entry", "adventurebay", "Park Ticket", otherDate, 10, 3, 89.99m));
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
+        var addResult = shoppingService.AddToCart("adventurebay-entry", 2, visitDate);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay-food", 1, visitDate);
+
+        foreach (var cartItem in shoppingService.GetCartItems(addResult.CartId))
+        {
+            shoppingService.AssignTicketHolder(
+                addResult.CartId,
+                cartItem.Id,
+                "Ryan",
+                "Peterson",
+                "ryan@example.com");
+        }
+
+        var result = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.True(result.Success);
+
+        var availability = new ParkService(parkRepository)
+            .GetMonthlyAvailability("adventurebay", 2026, 7);
+
+        Assert.Equal(6, availability[0].AvailableTickets);
+        Assert.Equal(8, availability[1].AvailableTickets);
+        Assert.Equal(7, availability[2].AvailableTickets);
+    }
+
     private static ShoppingService CreateShoppingService(
         ICartRepository cartRepository,
         IParkRepository parkRepository)
@@ -405,7 +442,7 @@ public class ShoppingServiceTests
 
     private sealed class StubParkRepository(params DailyInventory[] products) : IParkRepository
     {
-        private readonly Park _park = new(
+        private Park _park = new(
             1,
             "adventurebay",
             "Adventure Bay",
@@ -413,7 +450,28 @@ public class ShoppingServiceTests
 
         public Park? GetByUniqueName(string uniqueName)
         {
-            return _park.UniqueName == uniqueName ? _park : null;
+            return _park.UniqueName == uniqueName ? Clone(_park) : null;
+        }
+
+        public void Save(Park park)
+        {
+            _park = Clone(park);
+        }
+
+        private static Park Clone(Park park)
+        {
+            return new Park(
+                park.Id,
+                park.UniqueName,
+                park.Name,
+                new ParkCalendar(park.Calendar.DailyInventories.Select(inventory => new DailyInventory(
+                    inventory.ProductId,
+                    inventory.ParkUniqueName,
+                    inventory.Name,
+                    inventory.Date,
+                    inventory.TotalItemCount,
+                    inventory.SoldItemCount,
+                    inventory.Price))));
         }
     }
 

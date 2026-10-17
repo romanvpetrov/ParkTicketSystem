@@ -54,5 +54,9 @@ public class ParkServiceTests
         {
             return park.UniqueName == uniqueName ? park : null;
         }
+
+        public void Save(Park savedPark)
+        {
+        }
     }
 }

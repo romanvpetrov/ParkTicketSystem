@@ -1,3 +1,5 @@
+using TicketSystem.Domain.Orders;
+
 namespace TicketSystem.Domain.Parks;
 
 public sealed class Park
@@ -31,5 +33,14 @@ public sealed class Park
     public DailyInventory? GetDailyInventory(string productId, DateOnly date)
     {
         return Calendar.GetDailyInventory(productId, date);
+    }
+
+    public void RecordTicketsSold(IReadOnlyList<Ticket> tickets)
+    {
+        var ticketsForPark = tickets
+            .Where(ticket => ticket.ParkUniqueName == UniqueName)
+            .ToArray();
+
+        Calendar.RecordTicketsSold(ticketsForPark);
     }
 }

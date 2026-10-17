@@ -156,6 +156,19 @@ public sealed class ShoppingService
 
         _cartRepository.Save(cart);
 
+        var parkUniqueNames = paymentResult.Tickets
+            .Select(ticket => ticket.ParkUniqueName)
+            .Distinct();
+
+        foreach (var parkUniqueName in parkUniqueNames)
+        {
+            var park = _parkRepository.GetByUniqueName(parkUniqueName)
+                ?? throw new InvalidOperationException($"Park '{parkUniqueName}' was not found.");
+
+            park.RecordTicketsSold(paymentResult.Tickets);
+            _parkRepository.Save(park);
+        }
+
         foreach (var ticket in paymentResult.Tickets)
         {
             _ticketRepository.Save(ticket);

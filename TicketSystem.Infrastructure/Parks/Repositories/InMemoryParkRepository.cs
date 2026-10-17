@@ -5,7 +5,7 @@ namespace TicketSystem.Infrastructure.Parks;
 
 public sealed class InMemoryParkRepository : IParkRepository
 {
-    private readonly IReadOnlyList<Park> _parks =
+    private readonly List<Park> _parks =
     [
         new Park(
             1,
@@ -26,5 +26,17 @@ public sealed class InMemoryParkRepository : IParkRepository
     public Park? GetByUniqueName(string uniqueName)
     {
         return _parks.SingleOrDefault(park => park.UniqueName == uniqueName);
+    }
+
+    public void Save(Park park)
+    {
+        var existingPark = _parks.SingleOrDefault(existing => existing.UniqueName == park.UniqueName);
+
+        if (existingPark is not null)
+        {
+            _parks.Remove(existingPark);
+        }
+
+        _parks.Add(park);
     }
 }

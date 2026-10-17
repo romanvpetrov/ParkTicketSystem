@@ -1,3 +1,5 @@
+using TicketSystem.Domain.Orders;
+
 namespace TicketSystem.Domain.Parks;
 
 public sealed class ParkCalendar
@@ -35,5 +37,24 @@ public sealed class ParkCalendar
             .SingleOrDefault(dailyInventory =>
                 dailyInventory.ProductId == productId &&
                 dailyInventory.Date == date);
+    }
+
+    public void RecordTicketsSold(IReadOnlyList<Ticket> tickets)
+    {
+        var sales = tickets
+            .GroupBy(ticket => new { ticket.ProductId, ticket.VisitDate })
+            .Select(group => new
+            {
+                Inventory = GetDailyInventory(group.Key.ProductId, group.Key.VisitDate)
+                    ?? throw new InvalidOperationException(
+                        $"Product '{group.Key.ProductId}' was not found for {group.Key.VisitDate}."),
+                Quantity = group.Count()
+            })
+            .ToArray();
+
+        foreach (var sale in sales)
+        {
+            sale.Inventory.RecordItemsSold(sale.Quantity);
+        }
     }
 }

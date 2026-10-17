@@ -65,9 +65,25 @@ public sealed class DailyInventory
 
     public int TotalItemCount { get; }
 
-    public int SoldItemCount { get; }
+    public int SoldItemCount { get; private set; }
 
     public decimal Price { get; }
 
     public int AvailableItemCount => TotalItemCount - SoldItemCount;
+
+    public void RecordItemsSold(int quantity)
+    {
+        if (quantity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be positive.");
+        }
+
+        if (quantity > AvailableItemCount)
+        {
+            throw new InvalidOperationException(
+                $"Only {AvailableItemCount} items are available for product '{ProductId}' on {Date}.");
+        }
+
+        SoldItemCount += quantity;
+    }
 }
