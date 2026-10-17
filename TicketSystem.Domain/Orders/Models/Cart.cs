@@ -14,6 +14,14 @@ public sealed class Cart
         Id = id;
     }
 
+    public Cart(Guid id, IEnumerable<CartItem> items, bool isPaid = false)
+        : this(id)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        _items.AddRange(items);
+        IsPaid = isPaid;
+    }
+
     public Guid Id { get; }
 
     public IReadOnlyList<CartItem> Items => _items;

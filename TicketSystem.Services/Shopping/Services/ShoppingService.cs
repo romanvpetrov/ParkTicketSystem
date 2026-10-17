@@ -236,7 +236,7 @@ public sealed class ShoppingService
             return CreateCartItemResult.Failed("ParkNotFound", "Park 'adventurebay' was not found.");
         }
 
-        var product = park.GetDailyInventory(productId, visitDate);
+        var product = park.GetInventoryOrDefault(productId, visitDate);
 
         if (product is null)
         {

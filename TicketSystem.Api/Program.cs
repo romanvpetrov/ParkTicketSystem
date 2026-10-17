@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using OpenTelemetry;
 using TicketSystem.Domain.Repositories;
 using TicketSystem.Infrastructure.Parks;
+using TicketSystem.Infrastructure.Products;
 using TicketSystem.Infrastructure.Shopping;
 using TicketSystem.Services.Parks;
 using TicketSystem.Services.Shopping;
@@ -43,10 +44,34 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
     });
 }
 
-builder.Services.AddSingleton<InMemoryParkRepository>();
-builder.Services.AddSingleton<IParkRepository>(serviceProvider => serviceProvider.GetRequiredService<InMemoryParkRepository>());
-builder.Services.AddSingleton<ICartRepository, InMemoryCartRepository>();
-builder.Services.AddSingleton<ITicketRepository, InMemoryTicketRepository>();
+var dataDirectory = builder.Configuration["DataDirectory"];
+
+if (string.IsNullOrWhiteSpace(dataDirectory))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        dataDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+    }
+    else
+    {
+        var homeDirectory = Environment.GetEnvironmentVariable("HOME");
+
+        if (string.IsNullOrWhiteSpace(homeDirectory))
+        {
+            throw new InvalidOperationException(
+                "DataDirectory must be configured when persistent HOME storage is unavailable.");
+        }
+
+        dataDirectory = Path.Combine(homeDirectory, "data", "park-ticket-system");
+    }
+}
+
+builder.Services.AddSingleton<IProductRepository, InMemoryProductRepository>();
+builder.Services.AddSingleton<IParkRepository>(serviceProvider => new JsonParkRepository(
+    dataDirectory,
+    serviceProvider.GetRequiredService<IProductRepository>()));
+builder.Services.AddSingleton<ICartRepository>(_ => new JsonCartRepository(dataDirectory));
+builder.Services.AddSingleton<ITicketRepository>(_ => new JsonTicketRepository(dataDirectory));
 builder.Services.AddSingleton<IEmailService>(_ =>
 {
     var provider = builder.Configuration["Email:Provider"] ?? "Fake";

@@ -35,6 +35,11 @@ public sealed class Park
         return Calendar.GetDailyInventory(productId, date);
     }
 
+    public DailyInventory? GetInventoryOrDefault(string productId, DateOnly date)
+    {
+        return Calendar.GetDailyInventory(productId, date);
+    }
+
     public void RecordTicketsSold(IReadOnlyList<Ticket> tickets)
     {
         var ticketsForPark = tickets

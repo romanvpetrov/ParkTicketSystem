@@ -2,7 +2,12 @@ namespace TicketSystem.Domain.Orders;
 
 public sealed class TicketProduct
 {
-    public TicketProduct(string id, string parkUniqueName, DateOnly visitDate, decimal price)
+    public TicketProduct(
+        string id,
+        string parkUniqueName,
+        string name,
+        int defaultAvailableTicketCount,
+        decimal price)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -14,6 +19,18 @@ public sealed class TicketProduct
             throw new ArgumentException("Park unique name is required.", nameof(parkUniqueName));
         }
 
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Product name is required.", nameof(name));
+        }
+
+        if (defaultAvailableTicketCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(defaultAvailableTicketCount),
+                "Default available ticket count cannot be negative.");
+        }
+
         if (price < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
@@ -21,7 +38,8 @@ public sealed class TicketProduct
 
         Id = id;
         ParkUniqueName = parkUniqueName;
-        VisitDate = visitDate;
+        Name = name;
+        DefaultAvailableTicketCount = defaultAvailableTicketCount;
         Price = price;
     }
 
@@ -29,7 +47,21 @@ public sealed class TicketProduct
 
     public string ParkUniqueName { get; }
 
-    public DateOnly VisitDate { get; }
+    public string Name { get; }
+
+    public int DefaultAvailableTicketCount { get; }
 
     public decimal Price { get; }
+
+    public Parks.DailyInventory CreateDailyInventory(DateOnly visitDate)
+    {
+        return new Parks.DailyInventory(
+            Id,
+            ParkUniqueName,
+            Name,
+            visitDate,
+            DefaultAvailableTicketCount,
+            0,
+            Price);
+    }
 }

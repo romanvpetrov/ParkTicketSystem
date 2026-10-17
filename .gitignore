@@ -30,6 +30,7 @@ logs/
 *.local
 appsettings.Local.json
 appsettings.*.Local.json
+App_Data/
 
 ## NuGet
 *.nupkg
