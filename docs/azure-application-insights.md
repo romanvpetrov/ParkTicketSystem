@@ -23,7 +23,9 @@ The connection string is configured only in the App Service environment; do not 
 
 ## Store client IP addresses
 
-Application Insights collects the client IP with standard request telemetry. It uses IP addresses for geolocation but stores `0.0.0.0` by default. To retain the actual address, set `DisableIpMasking` to `true` on the Application Insights resource.
+The API processes `X-Forwarded-For` and `X-Forwarded-Proto` only when the immediate proxy is in an Azure App Service internal network. The allowlist includes the non-routable Linux App Service link-local range (`169.254.0.0/16`) so platform proxy addresses can rotate, plus both native IPv4 and IPv4-mapped IPv6 forms of the documented private App Service networks. The API then normalizes IPv4-mapped IPv6 client addresses and records the result as the OpenTelemetry `client.address`, which Azure Monitor maps to `requests.client_IP`. Forwarded headers from other sources are ignored to prevent clients from spoofing their address.
+
+Application Insights uses client IP addresses for geolocation but stores `0.0.0.0` by default. To retain the actual address, set `DisableIpMasking` to `true` on the Application Insights resource.
 
 Using Azure PowerShell:
 
