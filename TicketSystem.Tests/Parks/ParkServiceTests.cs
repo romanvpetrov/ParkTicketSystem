@@ -2,7 +2,7 @@ using TicketSystem.Domain.Parks;
 using TicketSystem.Domain.Repositories;
 using TicketSystem.Services.Parks;
 
-namespace TicketSystem.Tests;
+namespace TicketSystem.Tests.Parks;
 
 public class ParkServiceTests
 {

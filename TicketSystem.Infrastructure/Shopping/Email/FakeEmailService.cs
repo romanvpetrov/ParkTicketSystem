@@ -20,10 +20,3 @@ public sealed class FakeEmailService : IEmailService
         return Task.CompletedTask;
     }
 }
-
-public sealed record FakeEmailMessage(
-    string SenderEmail,
-    string ReceiverEmail,
-    string Subject,
-    string PlainText,
-    string Html);

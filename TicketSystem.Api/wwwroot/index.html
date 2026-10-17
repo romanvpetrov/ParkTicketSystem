@@ -389,23 +389,10 @@
       line-height: 1.35;
     }
 
-    .selection-bar {
+    .calendar-actions {
       margin-top: 20px;
       padding-top: 20px;
       border-top: 1px solid var(--line);
-      display: grid;
-      gap: 16px;
-    }
-
-    .selected-date-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfe;
     }
 
     .product-list {
@@ -813,7 +800,6 @@
         justify-content: start;
       }
 
-      .selected-date-summary,
       .dialog-footer,
       .holder-card-header {
         align-items: stretch;
@@ -1085,14 +1071,16 @@
           </div>
           <div class="toolbar">
             <button class="button secondary" type="button" data-action="back-parks">${icon("arrowLeft")} Park</button>
-            <button class="icon-button" type="button" data-action="previous-month" aria-label="Previous month">${icon("arrowLeft")}</button>
-            <button class="icon-button" type="button" data-action="next-month" aria-label="Next month">${icon("arrowRight")}</button>
           </div>
         </div>
 
         <div class="panel-header">
           <div>
             <h2>${monthLabel(state.year, state.month)}</h2>
+          </div>
+          <div class="toolbar">
+            <button class="icon-button" type="button" data-action="previous-month" aria-label="Previous month">${icon("arrowLeft")}</button>
+            <button class="icon-button" type="button" data-action="next-month" aria-label="Next month">${icon("arrowRight")}</button>
           </div>
         </div>
 
@@ -1103,19 +1091,8 @@
           </div>
         `}
 
-        <div class="selection-bar">
-          ${state.selectedDate ? `
-            <div class="selected-date-summary">
-              <div>
-                <h2>Selected date</h2>
-                <p class="lede">${formatSelectedDate()}</p>
-              </div>
-              <button class="button secondary" type="button" data-action="open-ticket-dialog">Choose Ticket Type</button>
-            </div>
-          ` : '<div class="empty-state">Select a highlighted date to choose a ticket type.</div>'}
-          <div class="toolbar">
-            <button class="button" type="button" data-action="go-cart">Continue to Cart</button>
-          </div>
+        <div class="toolbar calendar-actions">
+          <button class="button coral" type="button" data-action="go-cart">Continue to Cart ${icon("arrowRight")}</button>
         </div>
       `;
     }
@@ -1608,9 +1585,6 @@
         state.step = "cart";
         state.ticketDialogOpen = false;
         loadCart();
-      } else if (action === "open-ticket-dialog") {
-        state.ticketDialogOpen = true;
-        render();
       } else if (action === "back-tickets") {
         setStep(state.selectedPark ? "date" : "parks");
       } else if (action === "fill-info") {

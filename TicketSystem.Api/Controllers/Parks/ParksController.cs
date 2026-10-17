@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TicketSystem.Services.Parks;
 
-namespace TicketSystem.Api.Controllers;
+namespace TicketSystem.Api.Controllers.Parks;
 
 [ApiController]
 [Route("api/parks")]

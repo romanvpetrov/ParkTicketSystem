@@ -1,4 +1,4 @@
-namespace TicketSystem.Tests;
+namespace TicketSystem.Tests.Shopping;
 
 using TicketSystem.Domain.Orders;
 using TicketSystem.Domain.Parks;

@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using TicketSystem.Api.Contracts.Shopping;
 using TicketSystem.Services.Shopping;
 
-namespace TicketSystem.Api.Controllers;
+namespace TicketSystem.Api.Controllers.Shopping;
 
 [ApiController]
 [Route("api/cart")]
@@ -75,8 +76,4 @@ public sealed class ShoppingController : ControllerBase
     {
         return Ok(_shoppingService.RemoveFromCart(cartId, productId, year, month, day));
     }
-
-    public sealed record AddToCartRequest(string ProductId, int Quantity, int Year, int Month, int Day);
-
-    public sealed record AssignTicketHolderRequest(string FirstName, string LastName, string Email);
 }
