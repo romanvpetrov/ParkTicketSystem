@@ -541,13 +541,24 @@ public class ShoppingServiceTests
     private sealed class StubCartRepository : ICartRepository
     {
         private readonly Dictionary<Guid, Cart> _carts = [];
+        private readonly Dictionary<Guid, Cart> _stagedCarts = [];
 
         public Cart? GetById(Guid cartId)
         {
             return _carts.GetValueOrDefault(cartId);
         }
 
-        public void Save(Cart cart) => _carts[cart.Id] = cart;
+        public void Save(Cart cart) => _stagedCarts[cart.Id] = cart;
+
+        public void Commit()
+        {
+            foreach (var cart in _stagedCarts)
+            {
+                _carts[cart.Key] = cart.Value;
+            }
+
+            _stagedCarts.Clear();
+        }
     }
 
     private sealed class StubParkRepository(params DailyInventory[] products) : IParkRepository
@@ -557,6 +568,7 @@ public class ShoppingServiceTests
             "adventurebay",
             "Adventure Bay",
             new ParkCalendar(products));
+        private Park? _stagedPark;
 
         public StubParkRepository(Park park)
             : this()
@@ -571,7 +583,16 @@ public class ShoppingServiceTests
 
         public void Save(Park park)
         {
-            _park = Clone(park);
+            _stagedPark = Clone(park);
+        }
+
+        public void Commit()
+        {
+            if (_stagedPark is not null)
+            {
+                _park = _stagedPark;
+                _stagedPark = null;
+            }
         }
 
         private static Park Clone(Park park)
@@ -601,6 +622,7 @@ public class ShoppingServiceTests
     private sealed class StubTicketRepository : ITicketRepository
     {
         private readonly Dictionary<Guid, Ticket> _tickets = [];
+        private readonly Dictionary<Guid, Ticket> _stagedTickets = [];
 
         public Ticket? GetById(Guid ticketId)
         {
@@ -609,7 +631,17 @@ public class ShoppingServiceTests
 
         public void Save(Ticket ticket)
         {
-            _tickets[ticket.Id] = ticket;
+            _stagedTickets[ticket.Id] = ticket;
+        }
+
+        public void Commit()
+        {
+            foreach (var ticket in _stagedTickets)
+            {
+                _tickets[ticket.Key] = ticket.Value;
+            }
+
+            _stagedTickets.Clear();
         }
     }
 
@@ -631,4 +663,5 @@ public class ShoppingServiceTests
             return Task.CompletedTask;
         }
     }
+
 }

@@ -31,6 +31,11 @@ public sealed class JsonCartRepository : ICartRepository
         });
     }
 
+    public void Commit()
+    {
+        _store.Commit();
+    }
+
     private static Cart ToDomain(CartDocument cart)
     {
         var items = cart.Items.Select(item =>

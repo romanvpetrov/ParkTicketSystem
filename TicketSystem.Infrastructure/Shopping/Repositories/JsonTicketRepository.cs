@@ -31,6 +31,11 @@ public sealed class JsonTicketRepository : ITicketRepository
         });
     }
 
+    public void Commit()
+    {
+        _store.Commit();
+    }
+
     private static Ticket ToDomain(TicketDocument ticket)
     {
         return new Ticket(

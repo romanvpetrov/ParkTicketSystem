@@ -6,6 +6,7 @@ namespace TicketSystem.Infrastructure.Parks;
 public sealed class InMemoryParkRepository : IParkRepository
 {
     private readonly List<Park> _parks;
+    private readonly List<Park> _stagedParks = [];
 
     public InMemoryParkRepository(IProductRepository productRepository)
     {
@@ -36,13 +37,30 @@ public sealed class InMemoryParkRepository : IParkRepository
 
     public void Save(Park park)
     {
-        var existingPark = _parks.SingleOrDefault(existing => existing.UniqueName == park.UniqueName);
+        var existingPark = _stagedParks.SingleOrDefault(existing => existing.UniqueName == park.UniqueName);
 
         if (existingPark is not null)
         {
-            _parks.Remove(existingPark);
+            _stagedParks.Remove(existingPark);
         }
 
-        _parks.Add(park);
+        _stagedParks.Add(park);
+    }
+
+    public void Commit()
+    {
+        foreach (var park in _stagedParks)
+        {
+            var existingPark = _parks.SingleOrDefault(existing => existing.UniqueName == park.UniqueName);
+
+            if (existingPark is not null)
+            {
+                _parks.Remove(existingPark);
+            }
+
+            _parks.Add(park);
+        }
+
+        _stagedParks.Clear();
     }
 }

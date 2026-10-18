@@ -33,6 +33,11 @@ public sealed class JsonParkRepository : IParkRepository
         });
     }
 
+    public void Commit()
+    {
+        _store.Commit();
+    }
+
     private static List<ParkDocument> CreateInitialDocuments()
     {
         return

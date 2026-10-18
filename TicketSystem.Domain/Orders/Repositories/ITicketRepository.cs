@@ -7,4 +7,6 @@ public interface ITicketRepository
     Ticket? GetById(Guid ticketId);
 
     void Save(Ticket ticket);
+
+    void Commit();
 }

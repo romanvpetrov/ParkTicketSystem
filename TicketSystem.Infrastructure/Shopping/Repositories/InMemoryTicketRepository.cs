@@ -6,6 +6,7 @@ namespace TicketSystem.Infrastructure.Shopping;
 public sealed class InMemoryTicketRepository : ITicketRepository
 {
     private readonly Dictionary<Guid, Ticket> _tickets = [];
+    private readonly Dictionary<Guid, Ticket> _stagedTickets = [];
 
     public Ticket? GetById(Guid ticketId)
     {
@@ -14,6 +15,16 @@ public sealed class InMemoryTicketRepository : ITicketRepository
 
     public void Save(Ticket ticket)
     {
-        _tickets[ticket.Id] = ticket;
+        _stagedTickets[ticket.Id] = ticket;
+    }
+
+    public void Commit()
+    {
+        foreach (var ticket in _stagedTickets)
+        {
+            _tickets[ticket.Key] = ticket.Value;
+        }
+
+        _stagedTickets.Clear();
     }
 }

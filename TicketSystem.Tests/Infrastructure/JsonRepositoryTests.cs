@@ -32,6 +32,7 @@ public class JsonRepositoryTests
         inventory.RecordItemsSold(2);
 
         repository.Save(park);
+        repository.Commit();
 
         var reloadedRepository = new JsonParkRepository(directory.Path, productRepository);
         var reloadedPark = Assert.IsType<Domain.Parks.Park>(
@@ -58,6 +59,7 @@ public class JsonRepositoryTests
         cart.MarkPaid();
 
         repository.Save(cart);
+        repository.Commit();
 
         var reloadedRepository = new JsonCartRepository(directory.Path);
         var reloadedCart = Assert.IsType<Cart>(reloadedRepository.GetById(cart.Id));
@@ -87,6 +89,7 @@ public class JsonRepositoryTests
             "ryan@example.com");
 
         repository.Save(ticket);
+        repository.Commit();
 
         var reloadedRepository = new JsonTicketRepository(directory.Path);
         var reloadedTicket = Assert.IsType<Ticket>(reloadedRepository.GetById(ticket.Id));
@@ -95,6 +98,62 @@ public class JsonRepositoryTests
         Assert.Equal(ticket.ProductId, reloadedTicket.ProductId);
         Assert.Equal(ticket.VisitDate, reloadedTicket.VisitDate);
         Assert.Equal(ticket.Email, reloadedTicket.Email);
+    }
+
+    [Fact]
+    public void Repositories_StageChangesUntilCommit()
+    {
+        using var directory = new TemporaryDirectory();
+        var productRepository = new InMemoryProductRepository();
+        var parkRepository = new JsonParkRepository(directory.Path, productRepository);
+        var cartRepository = new JsonCartRepository(directory.Path);
+        var ticketRepository = new JsonTicketRepository(directory.Path);
+        var visitDate = new DateOnly(2026, 7, 1);
+        var park = Assert.IsType<Domain.Parks.Park>(parkRepository.GetByUniqueName("adventurebay"));
+        var inventory = Assert.IsType<Domain.Parks.DailyInventory>(
+            park.GetDailyInventory("adventurebay-entry", visitDate));
+        var originalSoldItemCount = inventory.SoldItemCount;
+        var cart = new Cart(Guid.NewGuid());
+        var ticket = new Ticket(
+            Guid.NewGuid(),
+            cart.Id,
+            Guid.NewGuid(),
+            "adventurebay-entry",
+            "adventurebay",
+            visitDate,
+            79.99m,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+
+        inventory.RecordItemsSold(1);
+        cartRepository.Save(cart);
+        parkRepository.Save(park);
+        ticketRepository.Save(ticket);
+
+        var reloadedParkRepository = new JsonParkRepository(directory.Path, productRepository);
+        var reloadedPark = Assert.IsType<Domain.Parks.Park>(
+            reloadedParkRepository.GetByUniqueName("adventurebay"));
+        var reloadedInventory = Assert.IsType<Domain.Parks.DailyInventory>(
+            reloadedPark.GetDailyInventory("adventurebay-entry", visitDate));
+
+        Assert.Equal(originalSoldItemCount, reloadedInventory.SoldItemCount);
+        Assert.Null(new JsonCartRepository(directory.Path).GetById(cart.Id));
+        Assert.Null(new JsonTicketRepository(directory.Path).GetById(ticket.Id));
+
+        cartRepository.Commit();
+        parkRepository.Commit();
+        ticketRepository.Commit();
+
+        var committedParkRepository = new JsonParkRepository(directory.Path, productRepository);
+        var committedPark = Assert.IsType<Domain.Parks.Park>(
+            committedParkRepository.GetByUniqueName("adventurebay"));
+        var committedInventory = Assert.IsType<Domain.Parks.DailyInventory>(
+            committedPark.GetDailyInventory("adventurebay-entry", visitDate));
+
+        Assert.Equal(originalSoldItemCount + 1, committedInventory.SoldItemCount);
+        Assert.NotNull(new JsonCartRepository(directory.Path).GetById(cart.Id));
+        Assert.NotNull(new JsonTicketRepository(directory.Path).GetById(ticket.Id));
     }
 
     private sealed class TemporaryDirectory : IDisposable

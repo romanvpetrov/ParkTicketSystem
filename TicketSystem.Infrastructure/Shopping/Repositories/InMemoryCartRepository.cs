@@ -6,6 +6,7 @@ namespace TicketSystem.Infrastructure.Shopping;
 public sealed class InMemoryCartRepository : ICartRepository
 {
     private readonly Dictionary<Guid, Cart> _carts = [];
+    private readonly Dictionary<Guid, Cart> _stagedCarts = [];
 
     public Cart? GetById(Guid cartId)
     {
@@ -14,6 +15,16 @@ public sealed class InMemoryCartRepository : ICartRepository
 
     public void Save(Cart cart)
     {
-        _carts[cart.Id] = cart;
+        _stagedCarts[cart.Id] = cart;
+    }
+
+    public void Commit()
+    {
+        foreach (var cart in _stagedCarts)
+        {
+            _carts[cart.Key] = cart.Value;
+        }
+
+        _stagedCarts.Clear();
     }
 }

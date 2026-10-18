@@ -7,4 +7,6 @@ public interface ICartRepository
     Cart? GetById(Guid cartId);
 
     void Save(Cart cart);
+
+    void Commit();
 }

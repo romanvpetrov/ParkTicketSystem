@@ -1,4 +1,5 @@
 using TicketSystem.Domain.Orders;
+using TicketSystem.Domain.Parks;
 using TicketSystem.Domain.Repositories;
 
 namespace TicketSystem.Services.Shopping;
@@ -52,6 +53,7 @@ public sealed class ShoppingService
         var cart = new Cart(Guid.NewGuid());
         cart.AddItem(result.CartItem!);
         _cartRepository.Save(cart);
+        _cartRepository.Commit();
 
         return AddToCartResult.Succeeded(cart.Id);
     }
@@ -74,6 +76,7 @@ public sealed class ShoppingService
 
         cart.AddItem(result.CartItem!);
         _cartRepository.Save(cart);
+        _cartRepository.Commit();
 
         return AddToCartResult.Succeeded(cartId);
     }
@@ -124,6 +127,7 @@ public sealed class ShoppingService
         }
 
         _cartRepository.Save(cart);
+        _cartRepository.Commit();
 
         return AssignTicketHolderResult.Succeeded();
     }
@@ -154,11 +158,11 @@ public sealed class ShoppingService
             };
         }
 
-        _cartRepository.Save(cart);
-
         var parkUniqueNames = paymentResult.Tickets
             .Select(ticket => ticket.ParkUniqueName)
             .Distinct();
+
+        var parks = new List<Park>();
 
         foreach (var parkUniqueName in parkUniqueNames)
         {
@@ -166,12 +170,27 @@ public sealed class ShoppingService
                 ?? throw new InvalidOperationException($"Park '{parkUniqueName}' was not found.");
 
             park.RecordTicketsSold(paymentResult.Tickets);
+            parks.Add(park);
+        }
+
+        _cartRepository.Save(cart);
+
+        foreach (var park in parks)
+        {
             _parkRepository.Save(park);
         }
 
         foreach (var ticket in paymentResult.Tickets)
         {
             _ticketRepository.Save(ticket);
+        }
+
+        _cartRepository.Commit();
+        _parkRepository.Commit();
+        _ticketRepository.Commit();
+
+        foreach (var ticket in paymentResult.Tickets)
+        {
             var email = _ticketEmailService.Create(ticket);
             await _emailService.SendAsync(
                 email.SenderEmail,
@@ -223,6 +242,7 @@ public sealed class ShoppingService
         }
 
         _cartRepository.Save(cart);
+        _cartRepository.Commit();
 
         return RemoveFromCartResult.Succeeded();
     }

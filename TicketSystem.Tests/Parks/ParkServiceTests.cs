@@ -172,5 +172,9 @@ public class ParkServiceTests
         public void Save(Park savedPark)
         {
         }
+
+        public void Commit()
+        {
+        }
     }
 }

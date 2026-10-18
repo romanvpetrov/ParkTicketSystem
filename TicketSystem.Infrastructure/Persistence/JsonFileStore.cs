@@ -12,6 +12,7 @@ internal sealed class JsonFileStore<T>
     private readonly string _filePath;
     private readonly Func<T> _createInitialValue;
     private readonly object _sync = new();
+    private byte[]? _stagedContents;
 
     public JsonFileStore(string dataDirectory, string fileName, Func<T> createInitialValue)
     {
@@ -39,16 +40,36 @@ internal sealed class JsonFileStore<T>
         {
             var value = Load();
             update(value);
-            Save(value);
+            _stagedContents = JsonSerializer.SerializeToUtf8Bytes(value, SerializerOptions);
+        }
+    }
+
+    public void Commit()
+    {
+        lock (_sync)
+        {
+            if (_stagedContents is null)
+            {
+                return;
+            }
+
+            Write(_stagedContents);
+            _stagedContents = null;
         }
     }
 
     private T Load()
     {
+        if (_stagedContents is not null)
+        {
+            return JsonSerializer.Deserialize<T>(_stagedContents, SerializerOptions)
+                ?? throw new InvalidOperationException($"Staged repository data for '{_filePath}' is invalid.");
+        }
+
         if (!File.Exists(_filePath))
         {
             var initialValue = _createInitialValue();
-            Save(initialValue);
+            Write(JsonSerializer.SerializeToUtf8Bytes(initialValue, SerializerOptions));
             return initialValue;
         }
 
@@ -57,17 +78,13 @@ internal sealed class JsonFileStore<T>
             ?? throw new InvalidOperationException($"File '{_filePath}' does not contain valid repository data.");
     }
 
-    private void Save(T value)
+    private void Write(byte[] contents)
     {
         var temporaryFilePath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
 
         try
         {
-            using (var stream = File.Create(temporaryFilePath))
-            {
-                JsonSerializer.Serialize(stream, value, SerializerOptions);
-            }
-
+            File.WriteAllBytes(temporaryFilePath, contents);
             File.Move(temporaryFilePath, _filePath, true);
         }
         finally
