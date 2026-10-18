@@ -106,7 +106,10 @@ public class ParkTests
         var result = inventory.TryRecordItemsSold(2);
 
         Assert.False(result.Success);
-        Assert.Equal(RecordItemsSoldFailure.NotEnoughInventory, result.Failure);
+        Assert.Equal(RecordTicketsSoldFailure.NotEnoughInventory, result.Failure);
+        Assert.Equal("adventurebay-entry", result.ProductId);
+        Assert.Equal(new DateOnly(2026, 7, 1), result.VisitDate);
+        Assert.Equal(2, result.RequestedItemCount);
         Assert.Equal(1, result.AvailableItemCount);
         Assert.Equal(4, inventory.SoldItemCount);
     }

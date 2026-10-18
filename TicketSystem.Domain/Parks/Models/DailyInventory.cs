@@ -95,24 +95,30 @@ public sealed class DailyInventory
             Price));
     }
 
-    public RecordItemsSoldResult TryRecordItemsSold(int quantity)
+    public RecordTicketsSoldResult TryRecordItemsSold(int quantity)
     {
         if (quantity <= 0)
         {
-            return RecordItemsSoldResult.Failed(
-                RecordItemsSoldFailure.InvalidQuantity,
+            return RecordTicketsSoldResult.Failed(
+                RecordTicketsSoldFailure.InvalidQuantity,
+                ProductId,
+                Date,
+                quantity,
                 AvailableItemCount);
         }
 
         if (quantity > AvailableItemCount)
         {
-            return RecordItemsSoldResult.Failed(
-                RecordItemsSoldFailure.NotEnoughInventory,
+            return RecordTicketsSoldResult.Failed(
+                RecordTicketsSoldFailure.NotEnoughInventory,
+                ProductId,
+                Date,
+                quantity,
                 AvailableItemCount);
         }
 
         SoldItemCount += quantity;
 
-        return RecordItemsSoldResult.Succeeded(AvailableItemCount);
+        return RecordTicketsSoldResult.Succeeded();
     }
 }

@@ -4,6 +4,7 @@ public enum RecordTicketsSoldFailure
 {
     None,
     ProductNotFound,
+    InvalidQuantity,
     NotEnoughInventory
 }
 

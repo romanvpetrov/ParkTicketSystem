@@ -114,12 +114,7 @@ public sealed class ParkCalendar
 
             if (!result.Success)
             {
-                return RecordTicketsSoldResult.Failed(
-                    RecordTicketsSoldFailure.NotEnoughInventory,
-                    sale.ProductId,
-                    sale.VisitDate,
-                    sale.Quantity,
-                    result.AvailableItemCount);
+                return result;
             }
 
             if (sale.ExistingInventory is null)
