@@ -57,6 +57,19 @@ public sealed class ParkCalendar
         return inventory;
     }
 
+    public IReadOnlyList<DailyInventory> GetMonthlyInventory(int year, int month, DateOnly currentDate)
+    {
+        return GetMonthlyInventory(year, month)
+            .Where(inventory => inventory.Date >= currentDate)
+            .ToArray();
+    }
+
+    public bool IsVisitDateInPast(CartItem cartItem, DateOnly currentDate)
+    {
+        ArgumentNullException.ThrowIfNull(cartItem);
+        return cartItem.VisitDate < currentDate;
+    }
+
     /// <summary>
     /// Finds the inventory record for a specific product on a specific visit date.
     /// </summary>

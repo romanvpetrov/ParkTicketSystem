@@ -6,6 +6,20 @@ namespace TicketSystem.Tests.Parks;
 public class ParkTests
 {
     [Fact]
+    public void Constructor_AllowsMissingPresentationMetadata()
+    {
+        var park = new Park(
+            1,
+            "adventurebay",
+            "Adventure Bay",
+            new ParkCalendar([]));
+
+        Assert.Null(park.Location);
+        Assert.Null(park.TagText);
+        Assert.Equal("America/New_York", park.TimeZoneId);
+    }
+
+    [Fact]
     public void Constructor_RejectsInventoryBelongingToAnotherPark()
     {
         var calendar = new ParkCalendar(
@@ -24,7 +38,38 @@ public class ParkTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             calendar));
+    }
+
+    [Fact]
+    public void IsVisitDateInPast_PassesCartItemAndParkLocalDateToCalendar()
+    {
+        var park = new Park(
+            1,
+            "adventurebay",
+            "Adventure Bay",
+            "Orlando, Florida",
+            null,
+            "America/Los_Angeles",
+            new ParkCalendar([]));
+        var utcNow = new DateTimeOffset(2026, 7, 2, 6, 0, 0, TimeSpan.Zero);
+        var pastItem = new CartItem(
+            "adventurebay-entry",
+            "adventurebay",
+            new DateOnly(2026, 6, 30),
+            1,
+            79.99m);
+        var currentItem = new CartItem(
+            "adventurebay-entry",
+            "adventurebay",
+            new DateOnly(2026, 7, 1),
+            1,
+            79.99m);
+
+        Assert.True(park.IsVisitDateInPast(pastItem, utcNow));
+        Assert.False(park.IsVisitDateInPast(currentItem, utcNow));
     }
 
     [Fact]
@@ -120,6 +165,8 @@ public class ParkTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
             [
                 new DailyInventory(

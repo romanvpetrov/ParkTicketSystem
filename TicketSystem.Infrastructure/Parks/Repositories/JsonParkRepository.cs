@@ -51,6 +51,9 @@ public sealed class JsonParkRepository : IParkRepository
                 1,
                 "adventurebay",
                 "Adventure Bay",
+                "Orlando, Florida",
+                null,
+                "America/New_York",
                 [
                     new DailyInventoryDocument("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 1), 50, 20, 79.99m),
                     new DailyInventoryDocument("adventurebay-plus", "adventurebay", "Adventure Bay Plus", new DateOnly(2026, 7, 1), 25, 5, 99.99m),
@@ -64,6 +67,9 @@ public sealed class JsonParkRepository : IParkRepository
                 2,
                 "splashharbor",
                 "Splash Harbor",
+                "Tampa, Florida",
+                null,
+                "America/New_York",
                 [
                     new DailyInventoryDocument("splashharbor-entry", "splashharbor", "Splash Harbor Entry", new DateOnly(2026, 7, 1), 40, 8, 59.99m),
                     new DailyInventoryDocument("splashharbor-food-pass", "splashharbor", "Splash Harbor Food Pass", new DateOnly(2026, 7, 1), 100, 15, 24.99m),
@@ -78,6 +84,9 @@ public sealed class JsonParkRepository : IParkRepository
             park.Id,
             park.UniqueName,
             park.Name,
+            park.Location,
+            park.TagText,
+            park.TimeZoneId,
             new ParkCalendar(
                 _productRepository.GetByParkUniqueName(park.UniqueName),
                 park.DailyInventories.Select(inventory => new DailyInventory(
@@ -96,6 +105,9 @@ public sealed class JsonParkRepository : IParkRepository
             park.Id,
             park.UniqueName,
             park.Name,
+            park.Location,
+            park.TagText,
+            park.TimeZoneId,
             park.Calendar.DailyInventories.Select(inventory => new DailyInventoryDocument(
                 inventory.ProductId,
                 inventory.ParkUniqueName,
@@ -110,6 +122,9 @@ public sealed class JsonParkRepository : IParkRepository
         int Id,
         string UniqueName,
         string Name,
+        string? Location,
+        string? TagText,
+        string? TimeZoneId,
         List<DailyInventoryDocument> DailyInventories);
 
     private sealed record DailyInventoryDocument(

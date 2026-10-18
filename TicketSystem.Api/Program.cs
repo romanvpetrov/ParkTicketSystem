@@ -67,6 +67,7 @@ if (string.IsNullOrWhiteSpace(dataDirectory))
 }
 
 builder.Services.AddSingleton<IProductRepository, InMemoryProductRepository>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IParkRepository>(serviceProvider => new JsonParkRepository(
     dataDirectory,
     serviceProvider.GetRequiredService<IProductRepository>()));

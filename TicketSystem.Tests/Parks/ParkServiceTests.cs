@@ -19,8 +19,27 @@ public class ParkServiceTests
         Assert.Equal(2, parks.Count);
         Assert.Equal("adventurebay", parks[0].UniqueName);
         Assert.Equal("Adventure Bay", parks[0].Name);
+        Assert.Equal("Orlando, Florida", parks[0].Location);
+        Assert.Equal("Single-day admission, food passes, and dated add-ons.", parks[0].TagText);
+        Assert.Equal("America/New_York", parks[0].TimeZoneId);
         Assert.Equal("splashharbor", parks[1].UniqueName);
         Assert.Equal("Splash Harbor", parks[1].Name);
+        Assert.Equal("Tampa, Florida", parks[1].Location);
+        Assert.Equal("Water park admission, food passes, and dated add-ons.", parks[1].TagText);
+        Assert.Equal("America/New_York", parks[1].TimeZoneId);
+    }
+
+    [Fact]
+    public void GetParks_AllowsMissingPresentationMetadata()
+    {
+        var park = new Park(1, "adventurebay", "Adventure Bay", new ParkCalendar([]));
+        var service = CreateParkService(park);
+
+        var result = Assert.Single(service.GetParks());
+
+        Assert.Null(result.Location);
+        Assert.Null(result.TagText);
+        Assert.Equal("America/New_York", result.TimeZoneId);
     }
 
     [Fact]
@@ -30,6 +49,8 @@ public class ParkServiceTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
             [
                 new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 1), 9_749, 749, 79.99m),
@@ -38,7 +59,7 @@ public class ParkServiceTests
                 new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 8, 1), 30, 5, 69.99m)
             ]));
 
-        var service = new ParkService(new StubParkRepository(park));
+        var service = CreateParkService(park);
 
         var days = service.GetMonthlyAvailability("adventurebay", 2026, 7);
 
@@ -73,6 +94,8 @@ public class ParkServiceTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
                 [
                     new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m),
@@ -88,7 +111,7 @@ public class ParkServiceTests
                         2,
                         89.99m)
                 ]));
-        var service = new ParkService(new StubParkRepository(park));
+        var service = CreateParkService(park);
 
         var availability = service.GetMonthlyAvailability("adventurebay", 2026, 7);
         var entry = Assert.Single(
@@ -111,13 +134,15 @@ public class ParkServiceTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
                 [
                     new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m),
                     new TicketProduct("adventurebay-plus", "adventurebay", "Adventure Bay Plus", 50, 99.99m)
                 ],
                 []));
-        var service = new ParkService(new StubParkRepository(park));
+        var service = CreateParkService(park);
 
         var availability = service.GetMonthlyAvailability("adventurebay", 2026, 7)
             .Where(item => item.Date.Day <= 3)
@@ -154,6 +179,8 @@ public class ParkServiceTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
                 [],
                 [
@@ -166,7 +193,7 @@ public class ParkServiceTests
                         2,
                         89.99m)
                 ]));
-        var service = new ParkService(new StubParkRepository(park));
+        var service = CreateParkService(park);
 
         var availability = service.GetMonthlyAvailability("adventurebay", 2026, 7);
         var entry = Assert.Single(availability);
@@ -178,9 +205,75 @@ public class ParkServiceTests
         Assert.Equal(89.99m, entry.Price);
     }
 
+    [Fact]
+    public void GetMonthlyAvailability_HidesDatesBeforeCurrentDateInParkTimeZone()
+    {
+        var park = new Park(
+            1,
+            "adventurebay",
+            "Adventure Bay",
+            "Orlando, Florida",
+            null,
+            "America/Los_Angeles",
+            new ParkCalendar(
+            [
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 1), 100, 0, 79.99m),
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 2), 100, 0, 79.99m),
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 3), 100, 0, 79.99m)
+            ]));
+        var service = new ParkService(
+            new StubParkRepository(park),
+            new StubTimeProvider(new DateTimeOffset(2026, 7, 3, 6, 0, 0, TimeSpan.Zero)));
+
+        var availability = service.GetMonthlyAvailability("adventurebay", 2026, 7);
+
+        Assert.Equal(2, availability.Count);
+        Assert.Equal(new DateOnly(2026, 7, 2), availability[0].Date);
+        Assert.Equal(new DateOnly(2026, 7, 3), availability[1].Date);
+    }
+
+    [Fact]
+    public void GetMonthlyAvailability_DefaultsToFloridaTimeZone()
+    {
+        var park = new Park(
+            1,
+            "adventurebay",
+            "Adventure Bay",
+            "Orlando, Florida",
+            null,
+            null,
+            new ParkCalendar(
+            [
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 1), 100, 0, 79.99m),
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 2), 100, 0, 79.99m),
+                new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 3), 100, 0, 79.99m)
+            ]));
+        var service = new ParkService(
+            new StubParkRepository(park),
+            new StubTimeProvider(new DateTimeOffset(2026, 7, 2, 5, 0, 0, TimeSpan.Zero)));
+
+        var availability = service.GetMonthlyAvailability("adventurebay", 2026, 7);
+
+        Assert.Equal(2, availability.Count);
+        Assert.Equal(new DateOnly(2026, 7, 2), availability[0].Date);
+        Assert.Equal(new DateOnly(2026, 7, 3), availability[1].Date);
+    }
+
     private static Park CreatePark(int id, string uniqueName, string name)
     {
-        return new Park(id, uniqueName, name, new ParkCalendar([]));
+        var location = uniqueName == "adventurebay" ? "Orlando, Florida" : "Tampa, Florida";
+        var tagText = uniqueName == "adventurebay"
+            ? "Single-day admission, food passes, and dated add-ons."
+            : "Water park admission, food passes, and dated add-ons.";
+
+        return new Park(id, uniqueName, name, location, tagText, new ParkCalendar([]));
+    }
+
+    private static ParkService CreateParkService(Park park)
+    {
+        return new ParkService(
+            new StubParkRepository(park),
+            new StubTimeProvider(new DateTimeOffset(2026, 7, 1, 4, 0, 0, TimeSpan.Zero)));
     }
 
     private sealed class StubParkRepository(params Park[] parks) : IParkRepository
@@ -201,6 +294,14 @@ public class ParkServiceTests
 
         public void Commit()
         {
+        }
+    }
+
+    private sealed class StubTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow()
+        {
+            return utcNow;
         }
     }
 }

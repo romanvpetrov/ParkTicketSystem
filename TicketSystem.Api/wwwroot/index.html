@@ -1004,7 +1004,8 @@
               ${state.parks.map(park => `
                 <button class="park-card" type="button" data-park="${park.uniqueName}">
                   <strong>${park.name}</strong>
-                  <span>View tickets and availability</span>
+                  ${park.location ? `<span>${park.location}</span>` : ""}
+                  ${park.tagText ? `<span>${park.tagText}</span>` : ""}
                 </button>
               `).join("")}
             </div>`;

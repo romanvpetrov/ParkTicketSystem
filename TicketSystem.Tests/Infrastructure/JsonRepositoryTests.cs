@@ -17,7 +17,13 @@ public class JsonRepositoryTests
 
         Assert.Equal(2, parks.Count);
         Assert.Equal("adventurebay", parks[0].UniqueName);
+        Assert.Equal("Orlando, Florida", parks[0].Location);
+        Assert.Null(parks[0].TagText);
+        Assert.Equal("America/New_York", parks[0].TimeZoneId);
         Assert.Equal("splashharbor", parks[1].UniqueName);
+        Assert.Equal("Tampa, Florida", parks[1].Location);
+        Assert.Null(parks[1].TagText);
+        Assert.Equal("America/New_York", parks[1].TimeZoneId);
     }
 
     [Fact]

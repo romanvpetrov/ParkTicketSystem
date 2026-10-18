@@ -51,6 +51,8 @@ public class ShoppingServiceTests
                 2,
                 "splashharbor",
                 "Splash Harbor",
+                "Tampa, Florida",
+                "Water park admission, food passes, and dated add-ons.",
                 new ParkCalendar(
                 [
                     new DailyInventory(
@@ -89,6 +91,8 @@ public class ShoppingServiceTests
                 1,
                 "adventurebay",
                 "Adventure Bay",
+                "Orlando, Florida",
+                "Single-day admission, food passes, and dated add-ons.",
                 new ParkCalendar(
                     [new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m)],
                     [])));
@@ -121,7 +125,7 @@ public class ShoppingServiceTests
         Assert.Equal(2, paymentResult.Tickets.Count);
 
         var inventory = Assert.Single(
-            new ParkService(parkRepository)
+            CreateParkService(parkRepository)
                 .GetMonthlyAvailability("adventurebay", visitDate.Year, visitDate.Month),
             item => item.ProductId == "adventurebay-entry" && item.Date == visitDate);
 
@@ -362,6 +366,42 @@ public class ShoppingServiceTests
     }
 
     [Fact]
+    public void AddToCart_ReturnsFailureWhenVisitDateIsBeforeTodayInParkTimeZone()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Adventure Bay Entry",
+                new DateOnly(2026, 7, 1),
+                10,
+                0,
+                79.99m));
+        var timeProvider = new StubTimeProvider(
+            new DateTimeOffset(2026, 7, 2, 4, 0, 0, TimeSpan.Zero));
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            new StubTicketRepository(),
+            new StubEmailService(),
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            timeProvider);
+
+        var result = shoppingService.AddToCart(
+            "adventurebay",
+            "adventurebay-entry",
+            1,
+            new DateOnly(2026, 7, 1));
+
+        Assert.False(result.Success);
+        Assert.Equal(Guid.Empty, result.CartId);
+        Assert.Equal("VisitDateInPast", result.FailureCode);
+        Assert.Empty(shoppingService.GetCartItems(result.CartId));
+        Assert.Equal(0, cartRepository.SaveCount);
+    }
+
+    [Fact]
     public void RemoveFromCart_RemovesSelectedItemFromTheCart()
     {
         var cartRepository = new StubCartRepository();
@@ -447,7 +487,8 @@ public class ShoppingServiceTests
             parkRepository,
             ticketRepository,
             emailService,
-            new TicketEmailService("tickets@parkticketsystem.test"));
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider());
 
         var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
         var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
@@ -490,6 +531,59 @@ public class ShoppingServiceTests
     }
 
     [Fact]
+    public async Task MarkPaid_ReturnsFailureWithoutMarkingCartPaidWhenVisitDateIsBeforeToday()
+    {
+        var visitDate = new DateOnly(2026, 7, 1);
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Adventure Bay Entry",
+                visitDate,
+                10,
+                0,
+                79.99m));
+        var ticketRepository = new StubTicketRepository();
+        var emailService = new StubEmailService();
+        var timeProvider = new StubTimeProvider(
+            new DateTimeOffset(2026, 7, 1, 4, 0, 0, TimeSpan.Zero));
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            timeProvider);
+        var addResult = shoppingService.AddToCart(
+            "adventurebay",
+            "adventurebay-entry",
+            1,
+            visitDate);
+        var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
+        shoppingService.AssignTicketHolder(
+            addResult.CartId,
+            cartItem.Id,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+        timeProvider.UtcNow = new DateTimeOffset(2026, 7, 2, 4, 0, 0, TimeSpan.Zero);
+
+        var result = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.False(result.Success);
+        Assert.Equal("VisitDateInPast", result.FailureCode);
+        Assert.Empty(ticketRepository.Tickets);
+        Assert.Empty(emailService.SentEmails);
+        Assert.Equal(0, parkRepository.SaveCount);
+
+        timeProvider.UtcNow = new DateTimeOffset(2026, 7, 1, 4, 0, 0, TimeSpan.Zero);
+        var retryResult = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.True(retryResult.Success);
+    }
+
+    [Fact]
     public async Task MarkPaid_CreatesTicketsAndEmailsForItemsFromTwoParks()
     {
         var visitDate = new DateOnly(2026, 7, 1);
@@ -497,6 +591,8 @@ public class ShoppingServiceTests
             1,
             "adventurebay",
             "Adventure Bay",
+            "Orlando, Florida",
+            "Single-day admission, food passes, and dated add-ons.",
             new ParkCalendar(
             [
                 new DailyInventory(
@@ -512,6 +608,8 @@ public class ShoppingServiceTests
             2,
             "splashharbor",
             "Splash Harbor",
+            "Tampa, Florida",
+            "Water park admission, food passes, and dated add-ons.",
             new ParkCalendar(
             [
                 new DailyInventory(
@@ -532,7 +630,8 @@ public class ShoppingServiceTests
             parkRepository,
             ticketRepository,
             emailService,
-            new TicketEmailService("tickets@parkticketsystem.test"));
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider());
         var addResult = shoppingService.AddToCart(
             "adventurebay",
             "adventurebay-entry",
@@ -564,7 +663,7 @@ public class ShoppingServiceTests
         Assert.Equal(2, ticketRepository.Tickets.Count);
         Assert.Equal(2, emailService.SentEmails.Count);
 
-        var parkService = new ParkService(parkRepository);
+        var parkService = CreateParkService(parkRepository);
         var adventureBayAvailability = Assert.Single(
             parkService.GetMonthlyAvailability("adventurebay", 2026, 7));
         var splashHarborAvailability = Assert.Single(
@@ -602,7 +701,7 @@ public class ShoppingServiceTests
 
         Assert.True(result.Success);
 
-        var availability = new ParkService(parkRepository)
+        var availability = CreateParkService(parkRepository)
             .GetMonthlyAvailability("adventurebay", 2026, 7);
 
         Assert.Equal(6, availability[0].AvailableTickets);
@@ -626,7 +725,8 @@ public class ShoppingServiceTests
             parkRepository,
             ticketRepository,
             emailService,
-            new TicketEmailService("tickets@parkticketsystem.test"));
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider());
 
         var firstCart = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, soldOutDate);
         var secondCart = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, soldOutDate);
@@ -668,7 +768,7 @@ public class ShoppingServiceTests
         Assert.Equal(parkSaveCount, parkRepository.SaveCount);
         Assert.Equal(ticketSaveCount, ticketRepository.SaveCount);
 
-        var availability = new ParkService(parkRepository)
+        var availability = CreateParkService(parkRepository)
             .GetMonthlyAvailability("adventurebay", 2026, 7);
         var soldOutInventory = Assert.Single(
             availability,
@@ -691,6 +791,8 @@ public class ShoppingServiceTests
                 1,
                 "adventurebay",
                 "Adventure Bay",
+                "Orlando, Florida",
+                "Single-day admission, food passes, and dated add-ons.",
                 new ParkCalendar(
                     [new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m)],
                     [])));
@@ -701,7 +803,8 @@ public class ShoppingServiceTests
             parkRepository,
             ticketRepository,
             emailService,
-            new TicketEmailService("tickets@parkticketsystem.test"));
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider());
         var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 2, visitDate);
         var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
 
@@ -733,6 +836,8 @@ public class ShoppingServiceTests
                 1,
                 "adventurebay",
                 "Adventure Bay",
+                "Orlando, Florida",
+                "Single-day admission, food passes, and dated add-ons.",
                 new ParkCalendar(
                     [
                         new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m),
@@ -771,7 +876,7 @@ public class ShoppingServiceTests
         Assert.True(result.Success);
         Assert.Equal(3, result.Tickets.Count);
 
-        var availability = new ParkService(parkRepository)
+        var availability = CreateParkService(parkRepository)
             .GetMonthlyAvailability("adventurebay", visitDate.Year, visitDate.Month);
         var entryInventory = Assert.Single(
             availability,
@@ -800,7 +905,14 @@ public class ShoppingServiceTests
             parkRepository,
             new StubTicketRepository(),
             new StubEmailService(),
-            new TicketEmailService("tickets@parkticketsystem.test"));
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider());
+    }
+
+    private static StubTimeProvider CreateTimeProvider()
+    {
+        return new StubTimeProvider(
+            new DateTimeOffset(2026, 7, 1, 4, 0, 0, TimeSpan.Zero));
     }
 
     private sealed class StubCartRepository : ICartRepository
@@ -832,6 +944,13 @@ public class ShoppingServiceTests
         }
     }
 
+    private static ParkService CreateParkService(IParkRepository parkRepository)
+    {
+        return new ParkService(
+            parkRepository,
+            new StubTimeProvider(new DateTimeOffset(2026, 7, 1, 4, 0, 0, TimeSpan.Zero)));
+    }
+
     private sealed class StubParkRepository : IParkRepository
     {
         private readonly List<Park> _parks;
@@ -847,6 +966,8 @@ public class ShoppingServiceTests
                     1,
                     "adventurebay",
                     "Adventure Bay",
+                    "Orlando, Florida",
+                    "Single-day admission, food passes, and dated add-ons.",
                     new ParkCalendar(products))
             ];
         }
@@ -898,6 +1019,9 @@ public class ShoppingServiceTests
                 park.Id,
                 park.UniqueName,
                 park.Name,
+                park.Location,
+                park.TagText,
+                park.TimeZoneId,
                 new ParkCalendar(
                     park.Calendar.TicketProducts.Select(product => new TicketProduct(
                         product.Id,
@@ -913,6 +1037,16 @@ public class ShoppingServiceTests
                         inventory.TotalItemCount,
                         inventory.SoldItemCount,
                         inventory.Price))));
+        }
+    }
+
+    private sealed class StubTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public DateTimeOffset UtcNow { get; set; } = utcNow;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return UtcNow;
         }
     }
 

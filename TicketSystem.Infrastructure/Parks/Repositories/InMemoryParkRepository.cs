@@ -16,6 +16,9 @@ public sealed class InMemoryParkRepository : IParkRepository
                 1,
                 "adventurebay",
                 "Adventure Bay",
+                "Orlando, Florida",
+                null,
+                "America/New_York",
                 new ParkCalendar(
                 productRepository.GetByParkUniqueName("adventurebay"),
                 [
@@ -31,6 +34,9 @@ public sealed class InMemoryParkRepository : IParkRepository
                 2,
                 "splashharbor",
                 "Splash Harbor",
+                "Tampa, Florida",
+                null,
+                "America/New_York",
                 new ParkCalendar(
                 productRepository.GetByParkUniqueName("splashharbor"),
                 [

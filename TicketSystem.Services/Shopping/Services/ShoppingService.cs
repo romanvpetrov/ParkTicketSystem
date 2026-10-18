@@ -11,6 +11,7 @@ public sealed class ShoppingService
     private readonly ITicketRepository _ticketRepository;
     private readonly IEmailService _emailService;
     private readonly TicketEmailService _ticketEmailService;
+    private readonly TimeProvider _timeProvider;
 
     public ShoppingService(
         ICartRepository cartRepository,
@@ -18,17 +19,46 @@ public sealed class ShoppingService
         ITicketRepository ticketRepository,
         IEmailService emailService,
         TicketEmailService ticketEmailService)
+        : this(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            ticketEmailService,
+            TimeProvider.System)
+    {
+    }
+
+    public ShoppingService(
+        ICartRepository cartRepository,
+        IParkRepository parkRepository,
+        ITicketRepository ticketRepository,
+        IEmailService emailService,
+        TicketEmailService ticketEmailService,
+        TimeProvider timeProvider)
     {
         _cartRepository = cartRepository;
         _parkRepository = parkRepository;
         _ticketRepository = ticketRepository;
         _emailService = emailService;
         _ticketEmailService = ticketEmailService;
+        _timeProvider = timeProvider;
     }
 
     public AddToCartResult AddToCart(string parkUniqueName, string productId, int quantity)
     {
-        return AddToCart(parkUniqueName, productId, quantity, DateOnly.FromDateTime(DateTime.Today));
+        var park = _parkRepository.GetByUniqueName(parkUniqueName);
+
+        if (park is null)
+        {
+            return AddToCartResult.Failed("ParkNotFound", $"Park '{parkUniqueName}' was not found.");
+        }
+
+        return AddToCart(
+            parkUniqueName,
+            productId,
+            quantity,
+            park.GetCurrentDate(_timeProvider.GetUtcNow()));
     }
 
     public AddToCartResult AddToCart(
@@ -165,6 +195,24 @@ public sealed class ShoppingService
             return MarkPaidResult.Failed("CartNotFound", $"Cart '{cartId}' was not found.");
         }
 
+        var parks = new List<Park>();
+        var utcNow = _timeProvider.GetUtcNow();
+
+        foreach (var cartItemsByPark in cart.Items.GroupBy(item => item.ParkUniqueName))
+        {
+            var park = _parkRepository.GetByUniqueName(cartItemsByPark.Key)
+                ?? throw new InvalidOperationException($"Park '{cartItemsByPark.Key}' was not found.");
+
+            if (cartItemsByPark.Any(item => park.IsVisitDateInPast(item, utcNow)))
+            {
+                return MarkPaidResult.Failed(
+                    "VisitDateInPast",
+                    "The cart contains a visit date that is earlier than today.");
+            }
+
+            parks.Add(park);
+        }
+
         var paymentResult = cart.MarkPaid();
 
         if (!paymentResult.Success)
@@ -180,17 +228,8 @@ public sealed class ShoppingService
             };
         }
 
-        var parkUniqueNames = paymentResult.Tickets
-            .Select(ticket => ticket.ParkUniqueName)
-            .Distinct();
-
-        var parks = new List<Park>();
-
-        foreach (var parkUniqueName in parkUniqueNames)
+        foreach (var park in parks)
         {
-            var park = _parkRepository.GetByUniqueName(parkUniqueName)
-                ?? throw new InvalidOperationException($"Park '{parkUniqueName}' was not found.");
-
             var inventoryResult = park.RecordTicketsSold(paymentResult.Tickets);
 
             if (!inventoryResult.Success)
@@ -208,8 +247,6 @@ public sealed class ShoppingService
                         "Inventory could not be updated for the cart.")
                 };
             }
-
-            parks.Add(park);
         }
 
         _cartRepository.Save(cart);
@@ -303,6 +340,13 @@ public sealed class ShoppingService
 
         if (creationResult.Success)
         {
+            if (park.IsVisitDateInPast(creationResult.CartItem!, _timeProvider.GetUtcNow()))
+            {
+                return CreateCartItemResult.Failed(
+                    "VisitDateInPast",
+                    $"Visit date '{visitDate}' is earlier than today.");
+            }
+
             return CreateCartItemResult.Succeeded(creationResult.CartItem!);
         }
 
