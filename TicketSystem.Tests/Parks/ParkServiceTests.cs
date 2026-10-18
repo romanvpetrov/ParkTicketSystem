@@ -8,6 +8,22 @@ namespace TicketSystem.Tests.Parks;
 public class ParkServiceTests
 {
     [Fact]
+    public void GetParks_ReturnsParkSummaries()
+    {
+        var adventureBay = CreatePark(1, "adventurebay", "Adventure Bay");
+        var splashHarbor = CreatePark(2, "splashharbor", "Splash Harbor");
+        var service = new ParkService(new StubParkRepository(adventureBay, splashHarbor));
+
+        var parks = service.GetParks();
+
+        Assert.Equal(2, parks.Count);
+        Assert.Equal("adventurebay", parks[0].UniqueName);
+        Assert.Equal("Adventure Bay", parks[0].Name);
+        Assert.Equal("splashharbor", parks[1].UniqueName);
+        Assert.Equal("Splash Harbor", parks[1].Name);
+    }
+
+    [Fact]
     public void GetMonthlyAvailability_ReturnsPricesAndAvailableTicketsForEachScheduledDay()
     {
         var park = new Park(
@@ -162,11 +178,21 @@ public class ParkServiceTests
         Assert.Equal(89.99m, entry.Price);
     }
 
-    private sealed class StubParkRepository(Park park) : IParkRepository
+    private static Park CreatePark(int id, string uniqueName, string name)
     {
+        return new Park(id, uniqueName, name, new ParkCalendar([]));
+    }
+
+    private sealed class StubParkRepository(params Park[] parks) : IParkRepository
+    {
+        public IReadOnlyList<Park> GetAll()
+        {
+            return parks;
+        }
+
         public Park? GetByUniqueName(string uniqueName)
         {
-            return park.UniqueName == uniqueName ? park : null;
+            return parks.SingleOrDefault(park => park.UniqueName == uniqueName);
         }
 
         public void Save(Park savedPark)

@@ -26,8 +26,24 @@ public sealed class InMemoryParkRepository : IParkRepository
                 new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 3), 100, 12, 84.99m),
                 new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 8, 1), 30, 5, 69.99m),
                 new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 10, 1), 30, 5, 69.99m)
+                ])),
+            new Park(
+                2,
+                "splashharbor",
+                "Splash Harbor",
+                new ParkCalendar(
+                productRepository.GetByParkUniqueName("splashharbor"),
+                [
+                new DailyInventory("splashharbor-entry", "splashharbor", "Splash Harbor Entry", new DateOnly(2026, 7, 1), 40, 8, 59.99m),
+                new DailyInventory("splashharbor-food-pass", "splashharbor", "Splash Harbor Food Pass", new DateOnly(2026, 7, 1), 100, 15, 24.99m),
+                new DailyInventory("splashharbor-entry", "splashharbor", "Splash Harbor Entry", new DateOnly(2026, 7, 2), 60, 0, 64.99m)
                 ]))
         ];
+    }
+
+    public IReadOnlyList<Park> GetAll()
+    {
+        return _parks.ToArray();
     }
 
     public Park? GetByUniqueName(string uniqueName)

@@ -6,9 +6,22 @@ public sealed class Park
 {
     public Park(int id, string uniqueName, string name, ParkCalendar calendar)
     {
+        if (string.IsNullOrWhiteSpace(uniqueName))
+        {
+            throw new ArgumentException("Park unique name is required.", nameof(uniqueName));
+        }
+
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("Park name is required.", nameof(name));
+        }
+
+        ArgumentNullException.ThrowIfNull(calendar);
+
+        if (calendar.DailyInventories.Any(inventory => inventory.ParkUniqueName != uniqueName) ||
+            calendar.TicketProducts.Any(product => product.ParkUniqueName != uniqueName))
+        {
+            throw new ArgumentException("The park calendar contains products or inventory for another park.", nameof(calendar));
         }
 
         Id = id;
@@ -35,17 +48,21 @@ public sealed class Park
         return Calendar.GetDailyInventory(productId, date);
     }
 
-    public DailyInventory? GetInventoryOrDefault(string productId, DateOnly date)
+    public CartItemCreationResult TryCreateCartItem(string productId, DateOnly date, int quantity)
     {
-        return Calendar.GetDailyInventory(productId, date);
+        var inventory = Calendar.GetDailyInventory(productId, date);
+
+        return inventory is null
+            ? CartItemCreationResult.Failed(CartItemCreationFailure.ProductNotFound)
+            : inventory.TryCreateCartItem(quantity);
     }
 
-    public void RecordTicketsSold(IReadOnlyList<Ticket> tickets)
+    public RecordTicketsSoldResult RecordTicketsSold(IReadOnlyList<Ticket> tickets)
     {
         var ticketsForPark = tickets
             .Where(ticket => ticket.ParkUniqueName == UniqueName)
             .ToArray();
 
-        Calendar.RecordTicketsSold(ticketsForPark);
+        return Calendar.RecordTicketsSold(ticketsForPark);
     }
 }

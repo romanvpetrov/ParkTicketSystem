@@ -15,6 +15,11 @@ public sealed class JsonParkRepository : IParkRepository
         _store = new JsonFileStore<List<ParkDocument>>(dataDirectory, "parks.json", CreateInitialDocuments);
     }
 
+    public IReadOnlyList<Park> GetAll()
+    {
+        return _store.Read(parks => parks.Select(ToDomain).ToArray());
+    }
+
     public Park? GetByUniqueName(string uniqueName)
     {
         return _store.Read(parks =>
@@ -54,6 +59,15 @@ public sealed class JsonParkRepository : IParkRepository
                     new DailyInventoryDocument("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 7, 3), 100, 12, 84.99m),
                     new DailyInventoryDocument("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 8, 1), 30, 5, 69.99m),
                     new DailyInventoryDocument("adventurebay-entry", "adventurebay", "Adventure Bay Entry", new DateOnly(2026, 10, 1), 30, 5, 69.99m)
+                ]),
+            new ParkDocument(
+                2,
+                "splashharbor",
+                "Splash Harbor",
+                [
+                    new DailyInventoryDocument("splashharbor-entry", "splashharbor", "Splash Harbor Entry", new DateOnly(2026, 7, 1), 40, 8, 59.99m),
+                    new DailyInventoryDocument("splashharbor-food-pass", "splashharbor", "Splash Harbor Food Pass", new DateOnly(2026, 7, 1), 100, 15, 24.99m),
+                    new DailyInventoryDocument("splashharbor-entry", "splashharbor", "Splash Harbor Entry", new DateOnly(2026, 7, 2), 60, 0, 64.99m)
                 ])
         ];
     }

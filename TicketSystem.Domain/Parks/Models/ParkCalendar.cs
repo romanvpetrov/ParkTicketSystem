@@ -86,29 +86,49 @@ public sealed class ParkCalendar
         _dailyInventories.Sort((left, right) => left.Date.CompareTo(right.Date));
     }
 
-    public void RecordTicketsSold(IReadOnlyList<Ticket> tickets)
+    internal RecordTicketsSoldResult RecordTicketsSold(IReadOnlyList<Ticket> tickets)
     {
         var sales = tickets
             .GroupBy(ticket => new { ticket.ProductId, ticket.VisitDate })
-            .Select(group => new
-            {
-                ExistingInventory = FindDailyInventory(group.Key.ProductId, group.Key.VisitDate),
-                Inventory = GetDailyInventory(group.Key.ProductId, group.Key.VisitDate)
-                    ?? throw new InvalidOperationException(
-                        $"Product '{group.Key.ProductId}' was not found for {group.Key.VisitDate}."),
-                Quantity = group.Count()
-            })
+            .Select(group => new PendingSale(
+                group.Key.ProductId,
+                group.Key.VisitDate,
+                group.Count(),
+                FindDailyInventory(group.Key.ProductId, group.Key.VisitDate),
+                GetDailyInventory(group.Key.ProductId, group.Key.VisitDate)))
             .ToArray();
 
         foreach (var sale in sales)
         {
+            if (sale.Inventory is null)
+            {
+                return RecordTicketsSoldResult.Failed(
+                    RecordTicketsSoldFailure.ProductNotFound,
+                    sale.ProductId,
+                    sale.VisitDate,
+                    sale.Quantity,
+                    0);
+            }
+
+            var result = sale.Inventory.TryRecordItemsSold(sale.Quantity);
+
+            if (!result.Success)
+            {
+                return RecordTicketsSoldResult.Failed(
+                    RecordTicketsSoldFailure.NotEnoughInventory,
+                    sale.ProductId,
+                    sale.VisitDate,
+                    sale.Quantity,
+                    result.AvailableItemCount);
+            }
+
             if (sale.ExistingInventory is null)
             {
                 AddDailyInventory(sale.Inventory);
             }
-
-            sale.Inventory.RecordItemsSold(sale.Quantity);
         }
+
+        return RecordTicketsSoldResult.Succeeded();
     }
 
     private DailyInventory? FindDailyInventory(string productId, DateOnly date)
@@ -118,4 +138,11 @@ public sealed class ParkCalendar
                 dailyInventory.ProductId == productId &&
                 dailyInventory.Date == date);
     }
+
+    private sealed record PendingSale(
+        string ProductId,
+        DateOnly VisitDate,
+        int Quantity,
+        DailyInventory? ExistingInventory,
+        DailyInventory? Inventory);
 }

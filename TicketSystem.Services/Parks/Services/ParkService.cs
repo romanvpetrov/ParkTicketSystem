@@ -11,6 +11,13 @@ public sealed class ParkService
         _parkRepository = parkRepository;
     }
 
+    public IReadOnlyList<ParkDto> GetParks()
+    {
+        return _parkRepository.GetAll()
+            .Select(park => new ParkDto(park.UniqueName, park.Name))
+            .ToArray();
+    }
+
     public IReadOnlyList<DailyTicketAvailabilityDto> GetMonthlyAvailability(string uniqueName, int year, int month)
     {
         var park = _parkRepository.GetByUniqueName(uniqueName);

@@ -14,6 +14,12 @@ public sealed class ParksController : ControllerBase
         _parkService = parkService;
     }
 
+    [HttpGet]
+    public ActionResult<IReadOnlyList<ParkDto>> GetParks()
+    {
+        return Ok(_parkService.GetParks());
+    }
+
     [HttpGet("{uniqueName}/availability/{year:int}/{month:int}")]
     public ActionResult<IReadOnlyList<DailyTicketAvailabilityDto>> GetMonthlyAvailability(
         string uniqueName,

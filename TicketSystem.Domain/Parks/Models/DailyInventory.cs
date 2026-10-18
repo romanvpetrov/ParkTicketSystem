@@ -1,3 +1,5 @@
+using TicketSystem.Domain.Orders;
+
 namespace TicketSystem.Domain.Parks;
 
 public sealed class DailyInventory
@@ -71,19 +73,46 @@ public sealed class DailyInventory
 
     public int AvailableItemCount => TotalItemCount - SoldItemCount;
 
-    public void RecordItemsSold(int quantity)
+    public CartItemCreationResult TryCreateCartItem(int quantity)
     {
         if (quantity <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be positive.");
+            return CartItemCreationResult.Failed(CartItemCreationFailure.InvalidQuantity);
         }
 
         if (quantity > AvailableItemCount)
         {
-            throw new InvalidOperationException(
-                $"Only {AvailableItemCount} items are available for product '{ProductId}' on {Date}.");
+            return CartItemCreationResult.Failed(
+                CartItemCreationFailure.NotEnoughInventory,
+                AvailableItemCount);
+        }
+
+        return CartItemCreationResult.Succeeded(new CartItem(
+            ProductId,
+            ParkUniqueName,
+            Date,
+            quantity,
+            Price));
+    }
+
+    public RecordItemsSoldResult TryRecordItemsSold(int quantity)
+    {
+        if (quantity <= 0)
+        {
+            return RecordItemsSoldResult.Failed(
+                RecordItemsSoldFailure.InvalidQuantity,
+                AvailableItemCount);
+        }
+
+        if (quantity > AvailableItemCount)
+        {
+            return RecordItemsSoldResult.Failed(
+                RecordItemsSoldFailure.NotEnoughInventory,
+                AvailableItemCount);
         }
 
         SoldItemCount += quantity;
+
+        return RecordItemsSoldResult.Succeeded(AvailableItemCount);
     }
 }

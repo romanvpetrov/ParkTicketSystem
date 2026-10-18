@@ -8,6 +8,39 @@ namespace TicketSystem.Tests.Infrastructure;
 public class JsonRepositoryTests
 {
     [Fact]
+    public void ParkRepository_ReturnsAllSeededParks()
+    {
+        using var directory = new TemporaryDirectory();
+        var repository = new JsonParkRepository(directory.Path, new InMemoryProductRepository());
+
+        var parks = repository.GetAll();
+
+        Assert.Equal(2, parks.Count);
+        Assert.Equal("adventurebay", parks[0].UniqueName);
+        Assert.Equal("splashharbor", parks[1].UniqueName);
+    }
+
+    [Fact]
+    public void ParkRepository_ReturnsSplashHarborSeedData()
+    {
+        using var directory = new TemporaryDirectory();
+        var productRepository = new InMemoryProductRepository();
+        var repository = new JsonParkRepository(directory.Path, productRepository);
+
+        var park = repository.GetByUniqueName("splashharbor");
+
+        Assert.NotNull(park);
+        Assert.Equal(2, park.Id);
+        Assert.Equal("Splash Harbor", park.Name);
+        Assert.Equal(2, park.Calendar.TicketProducts.Count);
+        Assert.Equal(3, park.Calendar.DailyInventories.Count);
+        Assert.Equal("splashharbor-entry", park.Calendar.DailyInventories[0].ProductId);
+        Assert.Equal(32, park.Calendar.DailyInventories[0].AvailableItemCount);
+        Assert.Equal("splashharbor-food-pass", park.Calendar.DailyInventories[1].ProductId);
+        Assert.Equal(85, park.Calendar.DailyInventories[1].AvailableItemCount);
+    }
+
+    [Fact]
     public void ParkRepository_PersistsInventoryChangesAcrossInstances()
     {
         using var directory = new TemporaryDirectory();
@@ -29,7 +62,14 @@ public class JsonRepositoryTests
 
         var inventory = Assert.IsType<Domain.Parks.DailyInventory>(
             park.GetDailyInventory("adventurebay-entry", new DateOnly(2026, 7, 1)));
-        inventory.RecordItemsSold(2);
+        var visitDate = inventory.Date;
+        var salesResult = park.RecordTicketsSold(
+        [
+            CreateTicket("adventurebay-entry", visitDate),
+            CreateTicket("adventurebay-entry", visitDate)
+        ]);
+
+        Assert.True(salesResult.Success);
 
         repository.Save(park);
         repository.Commit();
@@ -126,7 +166,9 @@ public class JsonRepositoryTests
             "Peterson",
             "ryan@example.com");
 
-        inventory.RecordItemsSold(1);
+        var salesResult = park.RecordTicketsSold([ticket]);
+
+        Assert.True(salesResult.Success);
         cartRepository.Save(cart);
         parkRepository.Save(park);
         ticketRepository.Save(ticket);
@@ -154,6 +196,21 @@ public class JsonRepositoryTests
         Assert.Equal(originalSoldItemCount + 1, committedInventory.SoldItemCount);
         Assert.NotNull(new JsonCartRepository(directory.Path).GetById(cart.Id));
         Assert.NotNull(new JsonTicketRepository(directory.Path).GetById(ticket.Id));
+    }
+
+    private static Ticket CreateTicket(string productId, DateOnly visitDate)
+    {
+        return new Ticket(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            productId,
+            "adventurebay",
+            visitDate,
+            79.99m,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
     }
 
     private sealed class TemporaryDirectory : IDisposable

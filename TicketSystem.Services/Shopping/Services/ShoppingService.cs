@@ -26,24 +26,41 @@ public sealed class ShoppingService
         _ticketEmailService = ticketEmailService;
     }
 
-    public AddToCartResult AddToCart(string productId, int quantity)
+    public AddToCartResult AddToCart(string parkUniqueName, string productId, int quantity)
     {
-        return AddToCart(productId, quantity, DateOnly.FromDateTime(DateTime.Today));
+        return AddToCart(parkUniqueName, productId, quantity, DateOnly.FromDateTime(DateTime.Today));
     }
 
-    public AddToCartResult AddToCart(string productId, int quantity, int year, int month, int day)
+    public AddToCartResult AddToCart(
+        string parkUniqueName,
+        string productId,
+        int quantity,
+        int year,
+        int month,
+        int day)
     {
-        return AddToCart(productId, quantity, new DateOnly(year, month, day));
+        return AddToCart(parkUniqueName, productId, quantity, new DateOnly(year, month, day));
     }
 
-    public AddToCartResult AddToCart(Guid cartId, string productId, int quantity, int year, int month, int day)
+    public AddToCartResult AddToCart(
+        Guid cartId,
+        string parkUniqueName,
+        string productId,
+        int quantity,
+        int year,
+        int month,
+        int day)
     {
-        return AddToCart(cartId, productId, quantity, new DateOnly(year, month, day));
+        return AddToCart(cartId, parkUniqueName, productId, quantity, new DateOnly(year, month, day));
     }
 
-    public AddToCartResult AddToCart(string productId, int quantity, DateOnly visitDate)
+    public AddToCartResult AddToCart(
+        string parkUniqueName,
+        string productId,
+        int quantity,
+        DateOnly visitDate)
     {
-        var result = CreateCartItem(productId, quantity, visitDate);
+        var result = CreateCartItem(parkUniqueName, productId, quantity, visitDate);
 
         if (!result.Success)
         {
@@ -58,9 +75,14 @@ public sealed class ShoppingService
         return AddToCartResult.Succeeded(cart.Id);
     }
 
-    public AddToCartResult AddToCart(Guid cartId, string productId, int quantity, DateOnly visitDate)
+    public AddToCartResult AddToCart(
+        Guid cartId,
+        string parkUniqueName,
+        string productId,
+        int quantity,
+        DateOnly visitDate)
     {
-        var result = CreateCartItem(productId, quantity, visitDate);
+        var result = CreateCartItem(parkUniqueName, productId, quantity, visitDate);
 
         if (!result.Success)
         {
@@ -71,7 +93,7 @@ public sealed class ShoppingService
 
         if (cart is null)
         {
-            return AddToCart(productId, quantity, visitDate);
+            return AddToCart(parkUniqueName, productId, quantity, visitDate);
         }
 
         cart.AddItem(result.CartItem!);
@@ -169,7 +191,24 @@ public sealed class ShoppingService
             var park = _parkRepository.GetByUniqueName(parkUniqueName)
                 ?? throw new InvalidOperationException($"Park '{parkUniqueName}' was not found.");
 
-            park.RecordTicketsSold(paymentResult.Tickets);
+            var inventoryResult = park.RecordTicketsSold(paymentResult.Tickets);
+
+            if (!inventoryResult.Success)
+            {
+                return inventoryResult.Failure switch
+                {
+                    RecordTicketsSoldFailure.ProductNotFound => MarkPaidResult.Failed(
+                        "ProductNotFound",
+                        $"Product '{inventoryResult.ProductId}' was not found for {inventoryResult.VisitDate}."),
+                    RecordTicketsSoldFailure.NotEnoughInventory => MarkPaidResult.Failed(
+                        "NotEnoughInventory",
+                        $"Only {inventoryResult.AvailableItemCount} item is available for {inventoryResult.ProductId}."),
+                    _ => MarkPaidResult.Failed(
+                        "InventoryUpdateFailed",
+                        "Inventory could not be updated for the cart.")
+                };
+            }
+
             parks.Add(park);
         }
 
@@ -247,37 +286,41 @@ public sealed class ShoppingService
         return RemoveFromCartResult.Succeeded();
     }
 
-    private CreateCartItemResult CreateCartItem(string productId, int quantity, DateOnly visitDate)
+    private CreateCartItemResult CreateCartItem(
+        string parkUniqueName,
+        string productId,
+        int quantity,
+        DateOnly visitDate)
     {
-        var park = _parkRepository.GetByUniqueName("adventurebay");
+        var park = _parkRepository.GetByUniqueName(parkUniqueName);
 
         if (park is null)
         {
-            return CreateCartItemResult.Failed("ParkNotFound", "Park 'adventurebay' was not found.");
+            return CreateCartItemResult.Failed("ParkNotFound", $"Park '{parkUniqueName}' was not found.");
         }
 
-        var product = park.GetInventoryOrDefault(productId, visitDate);
+        var creationResult = park.TryCreateCartItem(productId, visitDate, quantity);
 
-        if (product is null)
+        if (creationResult.Success)
         {
-            return CreateCartItemResult.Failed("ProductNotFound", $"Product '{productId}' was not found for {visitDate}.");
+            return CreateCartItemResult.Succeeded(creationResult.CartItem!);
         }
 
-        if (quantity > product.AvailableItemCount)
+        return creationResult.Failure switch
         {
-            return CreateCartItemResult.Failed(
+            CartItemCreationFailure.ProductNotFound => CreateCartItemResult.Failed(
+                "ProductNotFound",
+                $"Product '{productId}' was not found for {visitDate}."),
+            CartItemCreationFailure.InvalidQuantity => CreateCartItemResult.Failed(
+                "InvalidQuantity",
+                "Quantity must be greater than zero."),
+            CartItemCreationFailure.NotEnoughInventory => CreateCartItemResult.Failed(
                 "NotEnoughInventory",
-                $"Only {product.AvailableItemCount} item is available for {product.ProductId}.");
-        }
-
-        var cartItem = new CartItem(
-            product.ProductId,
-            product.ParkUniqueName,
-            product.Date,
-            quantity,
-            product.Price);
-
-        return CreateCartItemResult.Succeeded(cartItem);
+                $"Only {creationResult.AvailableItemCount} item is available for {productId}."),
+            _ => CreateCartItemResult.Failed(
+                "CartItemCreationFailed",
+                "The cart item could not be created.")
+        };
     }
 
     private sealed record CreateCartItemResult(

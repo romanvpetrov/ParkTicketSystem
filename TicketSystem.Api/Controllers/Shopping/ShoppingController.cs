@@ -19,6 +19,7 @@ public sealed class ShoppingController : ControllerBase
     public ActionResult<AddToCartResult> AddToNewCart(AddToCartRequest request)
     {
         return Ok(_shoppingService.AddToCart(
+            request.ParkUniqueName,
             request.ProductId,
             request.Quantity,
             request.Year,
@@ -31,6 +32,7 @@ public sealed class ShoppingController : ControllerBase
     {
         return Ok(_shoppingService.AddToCart(
             cartId,
+            request.ParkUniqueName,
             request.ProductId,
             request.Quantity,
             request.Year,

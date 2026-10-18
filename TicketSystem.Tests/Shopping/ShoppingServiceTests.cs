@@ -23,7 +23,7 @@ public class ShoppingServiceTests
                 79.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
-        var result = shoppingService.AddToCart("adventurebay-entry", 3, 2026, 7, 1);
+        var result = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 3, 2026, 7, 1);
 
         Assert.True(result.Success);
         Assert.NotEqual(Guid.Empty, result.CartId);
@@ -40,6 +40,92 @@ public class ShoppingServiceTests
         Assert.Equal(3, cartItem.Quantity);
         Assert.Equal(79.99m, cartItem.Price);
         Assert.Equal(239.97m, cartItem.LineTotal);
+    }
+
+    [Fact]
+    public void AddToCart_LoadsTheRequestedPark()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new Park(
+                2,
+                "splashharbor",
+                "Splash Harbor",
+                new ParkCalendar(
+                [
+                    new DailyInventory(
+                        "splashharbor-entry",
+                        "splashharbor",
+                        "Splash Harbor Entry",
+                        new DateOnly(2026, 7, 1),
+                        40,
+                        8,
+                        59.99m)
+                ])));
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
+
+        var result = shoppingService.AddToCart(
+            "splashharbor",
+            "splashharbor-entry",
+            1,
+            2026,
+            7,
+            1);
+
+        Assert.True(result.Success);
+        var cartItem = Assert.Single(shoppingService.GetCartItems(result.CartId));
+        Assert.Equal("splashharbor-entry", cartItem.ProductId);
+        Assert.Equal("splashharbor", cartItem.ParkUniqueName);
+        Assert.Equal(59.99m, cartItem.Price);
+    }
+
+    [Fact]
+    public async Task AddToCart_UsesProductDefaultsWhenDailyInventoryDoesNotExist()
+    {
+        var visitDate = new DateOnly(2026, 7, 4);
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new Park(
+                1,
+                "adventurebay",
+                "Adventure Bay",
+                new ParkCalendar(
+                    [new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m)],
+                    [])));
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
+
+        var result = shoppingService.AddToCart(
+            "adventurebay",
+            "adventurebay-entry",
+            2,
+            visitDate);
+
+        Assert.True(result.Success);
+        var cartItem = Assert.Single(shoppingService.GetCartItems(result.CartId));
+        Assert.Equal("adventurebay-entry", cartItem.ProductId);
+        Assert.Equal("adventurebay", cartItem.ParkUniqueName);
+        Assert.Equal(visitDate, cartItem.VisitDate);
+        Assert.Equal(2, cartItem.Quantity);
+        Assert.Equal(79.99m, cartItem.Price);
+
+        shoppingService.AssignTicketHolder(
+            result.CartId,
+            cartItem.Id,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+
+        var paymentResult = await shoppingService.MarkPaidAsync(result.CartId);
+
+        Assert.True(paymentResult.Success);
+        Assert.Equal(2, paymentResult.Tickets.Count);
+
+        var inventory = Assert.Single(
+            new ParkService(parkRepository)
+                .GetMonthlyAvailability("adventurebay", visitDate.Year, visitDate.Month),
+            item => item.ProductId == "adventurebay-entry" && item.Date == visitDate);
+
+        Assert.Equal(98, inventory.AvailableTickets);
     }
 
     [Fact]
@@ -65,8 +151,8 @@ public class ShoppingServiceTests
                 89.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
-        var firstResult = shoppingService.AddToCart("adventurebay-entry", 2, 2026, 7, 1);
-        shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 1, 2026, 7, 2);
+        var firstResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 2, 2026, 7, 1);
+        shoppingService.AddToCart(firstResult.CartId, "adventurebay", "adventurebay-entry", 1, 2026, 7, 2);
 
         var cartItems = shoppingService.GetCartItems(firstResult.CartId);
 
@@ -107,8 +193,8 @@ public class ShoppingServiceTests
                 79.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
-        var firstResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
-        shoppingService.AddToCart(firstResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
+        var firstResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
+        shoppingService.AddToCart(firstResult.CartId, "adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
 
         var cartItems = shoppingService.GetCartItems(firstResult.CartId);
         Assert.Equal(2, cartItems.Count);
@@ -148,8 +234,8 @@ public class ShoppingServiceTests
                 0,
                 79.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
-        shoppingService.AddToCart(addResult.CartId, "adventurebay-entry", 1, 2026, 7, 1);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
         var addedCartItems = shoppingService.GetCartItems(addResult.CartId);
         var firstCartItemId = addedCartItems[0].Id;
         var secondCartItemId = addedCartItems[1].Id;
@@ -209,7 +295,7 @@ public class ShoppingServiceTests
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
         var missingCartId = Guid.NewGuid();
 
-        var result = shoppingService.AddToCart(missingCartId, "adventurebay-entry", 2, 2026, 7, 1);
+        var result = shoppingService.AddToCart(missingCartId, "adventurebay", "adventurebay-entry", 2, 2026, 7, 1);
 
         Assert.True(result.Success);
         Assert.NotEqual(Guid.Empty, result.CartId);
@@ -243,13 +329,36 @@ public class ShoppingServiceTests
                 99.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
 
-        var result = shoppingService.AddToCart("adventurebay-plus", 2, 2026, 7, 1);
+        var result = shoppingService.AddToCart("adventurebay", "adventurebay-plus", 2, 2026, 7, 1);
 
         Assert.False(result.Success);
         Assert.Equal(Guid.Empty, result.CartId);
         Assert.Equal("NotEnoughInventory", result.FailureCode);
         Assert.Equal("Only 1 item is available for adventurebay-plus.", result.Message);
         Assert.Empty(shoppingService.GetCartItems(result.CartId));
+    }
+
+    [Fact]
+    public void AddToCart_ReturnsFailureWhenQuantityIsNotPositive()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Adventure Bay Entry",
+                new DateOnly(2026, 7, 1),
+                10,
+                0,
+                79.99m));
+        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
+
+        var result = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 0, 2026, 7, 1);
+
+        Assert.False(result.Success);
+        Assert.Equal(Guid.Empty, result.CartId);
+        Assert.Equal("InvalidQuantity", result.FailureCode);
+        Assert.Equal("Quantity must be greater than zero.", result.Message);
     }
 
     [Fact]
@@ -266,7 +375,7 @@ public class ShoppingServiceTests
                 0,
                 79.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 3, 2026, 7, 1);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 3, 2026, 7, 1);
 
         var removeResult = shoppingService.RemoveFromCart(addResult.CartId, "adventurebay-entry", 2026, 7, 1);
 
@@ -298,8 +407,8 @@ public class ShoppingServiceTests
                 0,
                 99.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 2, 2026, 7, 1);
-        shoppingService.AddToCart(addResult.CartId, "adventurebay-plus", 1, 2026, 7, 1);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 2, 2026, 7, 1);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay", "adventurebay-plus", 1, 2026, 7, 1);
 
         var removeResult = shoppingService.RemoveFromCart(addResult.CartId, "adventurebay-entry", 2026, 7, 1);
 
@@ -340,7 +449,7 @@ public class ShoppingServiceTests
             emailService,
             new TicketEmailService("tickets@parkticketsystem.test"));
 
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 1, 2026, 7, 1);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, 2026, 7, 1);
         var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
         shoppingService.AssignTicketHolder(
             addResult.CartId,
@@ -381,6 +490,91 @@ public class ShoppingServiceTests
     }
 
     [Fact]
+    public async Task MarkPaid_CreatesTicketsAndEmailsForItemsFromTwoParks()
+    {
+        var visitDate = new DateOnly(2026, 7, 1);
+        var adventureBay = new Park(
+            1,
+            "adventurebay",
+            "Adventure Bay",
+            new ParkCalendar(
+            [
+                new DailyInventory(
+                    "adventurebay-entry",
+                    "adventurebay",
+                    "Adventure Bay Entry",
+                    visitDate,
+                    10,
+                    2,
+                    79.99m)
+            ]));
+        var splashHarbor = new Park(
+            2,
+            "splashharbor",
+            "Splash Harbor",
+            new ParkCalendar(
+            [
+                new DailyInventory(
+                    "splashharbor-entry",
+                    "splashharbor",
+                    "Splash Harbor Entry",
+                    visitDate,
+                    20,
+                    5,
+                    59.99m)
+            ]));
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(adventureBay, splashHarbor);
+        var ticketRepository = new StubTicketRepository();
+        var emailService = new StubEmailService();
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            new TicketEmailService("tickets@parkticketsystem.test"));
+        var addResult = shoppingService.AddToCart(
+            "adventurebay",
+            "adventurebay-entry",
+            1,
+            visitDate);
+        shoppingService.AddToCart(
+            addResult.CartId,
+            "splashharbor",
+            "splashharbor-entry",
+            1,
+            visitDate);
+
+        foreach (var cartItem in shoppingService.GetCartItems(addResult.CartId))
+        {
+            shoppingService.AssignTicketHolder(
+                addResult.CartId,
+                cartItem.Id,
+                "Ryan",
+                "Peterson",
+                "ryan@example.com");
+        }
+
+        var result = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.Tickets.Count);
+        Assert.Equal("adventurebay", result.Tickets[0].ParkUniqueName);
+        Assert.Equal("splashharbor", result.Tickets[1].ParkUniqueName);
+        Assert.Equal(2, ticketRepository.Tickets.Count);
+        Assert.Equal(2, emailService.SentEmails.Count);
+
+        var parkService = new ParkService(parkRepository);
+        var adventureBayAvailability = Assert.Single(
+            parkService.GetMonthlyAvailability("adventurebay", 2026, 7));
+        var splashHarborAvailability = Assert.Single(
+            parkService.GetMonthlyAvailability("splashharbor", 2026, 7));
+
+        Assert.Equal(7, adventureBayAvailability.AvailableTickets);
+        Assert.Equal(14, splashHarborAvailability.AvailableTickets);
+    }
+
+    [Fact]
     public async Task MarkPaid_UpdatesParkInventoryForPurchasedTicketTypes()
     {
         var visitDate = new DateOnly(2026, 7, 1);
@@ -391,8 +585,8 @@ public class ShoppingServiceTests
             new DailyInventory("adventurebay-plus", "adventurebay", "Adventure Bay Plus", visitDate, 10, 1, 99.99m),
             new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", otherDate, 10, 3, 89.99m));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 2, visitDate);
-        shoppingService.AddToCart(addResult.CartId, "adventurebay-plus", 1, visitDate);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 2, visitDate);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay", "adventurebay-plus", 1, visitDate);
 
         foreach (var cartItem in shoppingService.GetCartItems(addResult.CartId))
         {
@@ -417,7 +611,78 @@ public class ShoppingServiceTests
     }
 
     [Fact]
-    public async Task MarkPaid_CreatesDailyInventoryFromTicketProductDefaults()
+    public async Task MarkPaid_ReturnsFailureWithoutCreatingTicketsOrUpdatingInventoryWhenInventoryWasSoldByAnotherCart()
+    {
+        var soldOutDate = new DateOnly(2026, 7, 1);
+        var availableDate = new DateOnly(2026, 7, 2);
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", soldOutDate, 1, 0, 79.99m),
+            new DailyInventory("adventurebay-entry", "adventurebay", "Adventure Bay Entry", availableDate, 10, 0, 89.99m));
+        var ticketRepository = new StubTicketRepository();
+        var emailService = new StubEmailService();
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            new TicketEmailService("tickets@parkticketsystem.test"));
+
+        var firstCart = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, soldOutDate);
+        var secondCart = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, soldOutDate);
+        shoppingService.AddToCart(secondCart.CartId, "adventurebay", "adventurebay-entry", 1, availableDate);
+
+        foreach (var cartItem in shoppingService.GetCartItems(firstCart.CartId))
+        {
+            shoppingService.AssignTicketHolder(
+                firstCart.CartId,
+                cartItem.Id,
+                "Ryan",
+                "Peterson",
+                "ryan@example.com");
+        }
+
+        foreach (var cartItem in shoppingService.GetCartItems(secondCart.CartId))
+        {
+            shoppingService.AssignTicketHolder(
+                secondCart.CartId,
+                cartItem.Id,
+                "Jamie",
+                "Smith",
+                "jamie@example.com");
+        }
+
+        var firstPayment = await shoppingService.MarkPaidAsync(firstCart.CartId);
+        var cartSaveCount = cartRepository.SaveCount;
+        var parkSaveCount = parkRepository.SaveCount;
+        var ticketSaveCount = ticketRepository.SaveCount;
+        var secondPayment = await shoppingService.MarkPaidAsync(secondCart.CartId);
+
+        Assert.True(firstPayment.Success);
+        Assert.False(secondPayment.Success);
+        Assert.Equal("NotEnoughInventory", secondPayment.FailureCode);
+        Assert.Empty(secondPayment.Tickets);
+        Assert.Single(ticketRepository.Tickets);
+        Assert.Single(emailService.SentEmails);
+        Assert.Equal(cartSaveCount, cartRepository.SaveCount);
+        Assert.Equal(parkSaveCount, parkRepository.SaveCount);
+        Assert.Equal(ticketSaveCount, ticketRepository.SaveCount);
+
+        var availability = new ParkService(parkRepository)
+            .GetMonthlyAvailability("adventurebay", 2026, 7);
+        var soldOutInventory = Assert.Single(
+            availability,
+            inventory => inventory.ProductId == "adventurebay-entry" && inventory.Date == soldOutDate);
+        var availableInventory = Assert.Single(
+            availability,
+            inventory => inventory.ProductId == "adventurebay-entry" && inventory.Date == availableDate);
+
+        Assert.Equal(0, soldOutInventory.AvailableTickets);
+        Assert.Equal(10, availableInventory.AvailableTickets);
+    }
+
+    [Fact]
+    public async Task MarkPaid_CreatesDailyInventoryFromProductDefaults()
     {
         var visitDate = new DateOnly(2026, 7, 4);
         var cartRepository = new StubCartRepository();
@@ -429,8 +694,15 @@ public class ShoppingServiceTests
                 new ParkCalendar(
                     [new TicketProduct("adventurebay-entry", "adventurebay", "Adventure Bay Entry", 100, 79.99m)],
                     [])));
-        var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 2, visitDate);
+        var ticketRepository = new StubTicketRepository();
+        var emailService = new StubEmailService();
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            new TicketEmailService("tickets@parkticketsystem.test"));
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 2, visitDate);
         var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
 
         Assert.Equal(79.99m, cartItem.Price);
@@ -445,22 +717,14 @@ public class ShoppingServiceTests
         var result = await shoppingService.MarkPaidAsync(addResult.CartId);
 
         Assert.True(result.Success);
-
-        var availability = new ParkService(parkRepository)
-            .GetMonthlyAvailability("adventurebay", visitDate.Year, visitDate.Month);
-        var inventory = Assert.Single(
-            availability,
-            item => item.ProductId == "adventurebay-entry" && item.Date == visitDate);
-
-        Assert.Equal("adventurebay-entry", inventory.ProductId);
-        Assert.Equal("Adventure Bay Entry", inventory.ProductName);
-        Assert.Equal(visitDate, inventory.Date);
-        Assert.Equal(98, inventory.AvailableTickets);
-        Assert.Equal(79.99m, inventory.Price);
+        Assert.Equal(2, result.Tickets.Count);
+        Assert.Equal(2, ticketRepository.Tickets.Count);
+        Assert.Equal(2, emailService.SentEmails.Count);
+        Assert.Equal(1, parkRepository.SaveCount);
     }
 
     [Fact]
-    public async Task MarkPaid_UsesExistingDailyInventoryAndCreatesMissingProductInventory()
+    public async Task MarkPaid_UpdatesExistingAndDefaultProductInventory()
     {
         var visitDate = new DateOnly(2026, 7, 4);
         var cartRepository = new StubCartRepository();
@@ -485,8 +749,8 @@ public class ShoppingServiceTests
                             89.99m)
                     ])));
         var shoppingService = CreateShoppingService(cartRepository, parkRepository);
-        var addResult = shoppingService.AddToCart("adventurebay-entry", 1, visitDate);
-        shoppingService.AddToCart(addResult.CartId, "adventurebay-plus", 2, visitDate);
+        var addResult = shoppingService.AddToCart("adventurebay", "adventurebay-entry", 1, visitDate);
+        shoppingService.AddToCart(addResult.CartId, "adventurebay", "adventurebay-plus", 2, visitDate);
         var cartItems = shoppingService.GetCartItems(addResult.CartId);
 
         Assert.Equal(89.99m, cartItems[0].Price);
@@ -505,6 +769,7 @@ public class ShoppingServiceTests
         var result = await shoppingService.MarkPaidAsync(addResult.CartId);
 
         Assert.True(result.Success);
+        Assert.Equal(3, result.Tickets.Count);
 
         var availability = new ParkService(parkRepository)
             .GetMonthlyAvailability("adventurebay", visitDate.Year, visitDate.Month);
@@ -543,12 +808,18 @@ public class ShoppingServiceTests
         private readonly Dictionary<Guid, Cart> _carts = [];
         private readonly Dictionary<Guid, Cart> _stagedCarts = [];
 
+        public int SaveCount { get; private set; }
+
         public Cart? GetById(Guid cartId)
         {
             return _carts.GetValueOrDefault(cartId);
         }
 
-        public void Save(Cart cart) => _stagedCarts[cart.Id] = cart;
+        public void Save(Cart cart)
+        {
+            SaveCount++;
+            _stagedCarts[cart.Id] = cart;
+        }
 
         public void Commit()
         {
@@ -561,38 +832,64 @@ public class ShoppingServiceTests
         }
     }
 
-    private sealed class StubParkRepository(params DailyInventory[] products) : IParkRepository
+    private sealed class StubParkRepository : IParkRepository
     {
-        private Park _park = new(
-            1,
-            "adventurebay",
-            "Adventure Bay",
-            new ParkCalendar(products));
-        private Park? _stagedPark;
+        private readonly List<Park> _parks;
+        private readonly Dictionary<string, Park> _stagedParks = [];
 
-        public StubParkRepository(Park park)
-            : this()
+        public int SaveCount { get; private set; }
+
+        public StubParkRepository(params DailyInventory[] products)
         {
-            _park = Clone(park);
+            _parks =
+            [
+                new Park(
+                    1,
+                    "adventurebay",
+                    "Adventure Bay",
+                    new ParkCalendar(products))
+            ];
+        }
+
+        public StubParkRepository(params Park[] parks)
+        {
+            _parks = parks.Select(Clone).ToList();
+        }
+
+        public IReadOnlyList<Park> GetAll()
+        {
+            return _parks.Select(Clone).ToArray();
         }
 
         public Park? GetByUniqueName(string uniqueName)
         {
-            return _park.UniqueName == uniqueName ? Clone(_park) : null;
+            var park = _parks.SingleOrDefault(park => park.UniqueName == uniqueName);
+            return park is null ? null : Clone(park);
         }
 
         public void Save(Park park)
         {
-            _stagedPark = Clone(park);
+            SaveCount++;
+            _stagedParks[park.UniqueName] = Clone(park);
         }
 
         public void Commit()
         {
-            if (_stagedPark is not null)
+            foreach (var stagedPark in _stagedParks.Values)
             {
-                _park = _stagedPark;
-                _stagedPark = null;
+                var index = _parks.FindIndex(park => park.UniqueName == stagedPark.UniqueName);
+
+                if (index >= 0)
+                {
+                    _parks[index] = stagedPark;
+                }
+                else
+                {
+                    _parks.Add(stagedPark);
+                }
             }
+
+            _stagedParks.Clear();
         }
 
         private static Park Clone(Park park)
@@ -624,6 +921,10 @@ public class ShoppingServiceTests
         private readonly Dictionary<Guid, Ticket> _tickets = [];
         private readonly Dictionary<Guid, Ticket> _stagedTickets = [];
 
+        public IReadOnlyCollection<Ticket> Tickets => _tickets.Values;
+
+        public int SaveCount { get; private set; }
+
         public Ticket? GetById(Guid ticketId)
         {
             return _tickets.GetValueOrDefault(ticketId);
@@ -631,6 +932,7 @@ public class ShoppingServiceTests
 
         public void Save(Ticket ticket)
         {
+            SaveCount++;
             _stagedTickets[ticket.Id] = ticket;
         }
 

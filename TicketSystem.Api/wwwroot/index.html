@@ -893,18 +893,10 @@
   <div class="dialog-backdrop" id="ticketDialogHost" hidden></div>
 
   <script>
-    const PARKS = [
-      {
-        uniqueName: "adventurebay",
-        name: "Adventure Bay",
-        location: "Orlando, Florida",
-        summary: "Single-day admission, food passes, and dated add-ons.",
-        accent: "Great for flexible family visits"
-      }
-    ];
-
     const state = {
       step: "parks",
+      parks: [],
+      parksLoading: true,
       selectedPark: null,
       year: new Date().getFullYear(),
       month: new Date().getMonth() + 1,
@@ -1004,6 +996,19 @@
     }
 
     function renderParks() {
+      const parkList = state.parksLoading
+        ? `<p class="lede">Loading parks...</p>`
+        : state.parks.length === 0
+          ? `<p class="lede">Parks could not be loaded.</p>`
+          : `<div class="park-list">
+              ${state.parks.map(park => `
+                <button class="park-card" type="button" data-park="${park.uniqueName}">
+                  <strong>${park.name}</strong>
+                  <span>View tickets and availability</span>
+                </button>
+              `).join("")}
+            </div>`;
+
       app.innerHTML = `
         <div class="panel-header">
           <div>
@@ -1011,17 +1016,26 @@
             <p class="lede">Availability and prices are loaded after you choose where you want to visit.</p>
           </div>
         </div>
-        <div class="park-list">
-          ${PARKS.map(park => `
-            <button class="park-card" type="button" data-park="${park.uniqueName}">
-              <span>${park.accent}</span>
-              <strong>${park.name}</strong>
-              <span>${park.location}</span>
-              <span>${park.summary}</span>
-            </button>
-          `).join("")}
-        </div>
+        ${parkList}
       `;
+    }
+
+    async function loadParks() {
+      try {
+        const response = await fetch("/api/parks");
+
+        if (!response.ok) {
+          throw new Error("Parks request failed.");
+        }
+
+        state.parks = await response.json();
+      } catch (error) {
+        state.parks = [];
+        setStatus("Parks could not be loaded.");
+      } finally {
+        state.parksLoading = false;
+        render();
+      }
     }
 
     function renderDate() {
@@ -1375,7 +1389,7 @@
     }
 
     async function addSelectedTicketToCart() {
-      if (!state.selectedDate || !state.selectedProductId) {
+      if (!state.selectedPark || !state.selectedDate || !state.selectedProductId) {
         return;
       }
 
@@ -1388,6 +1402,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            parkUniqueName: state.selectedPark.uniqueName,
             productId: state.selectedProductId,
             quantity: 1,
             year: date.year,
@@ -1547,7 +1562,7 @@
       const removeButton = event.target.closest("[data-remove-product]");
 
       if (parkButton) {
-        state.selectedPark = PARKS.find(park => park.uniqueName === parkButton.dataset.park);
+        state.selectedPark = state.parks.find(park => park.uniqueName === parkButton.dataset.park);
         state.step = "date";
         state.selectedDate = null;
         state.selectedProductId = null;
@@ -1635,8 +1650,9 @@
       loadCart();
     });
 
-    loadCart();
     render();
+    loadParks();
+    loadCart();
   </script>
 </body>
 </html>
