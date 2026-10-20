@@ -1,5 +1,6 @@
 namespace TicketSystem.Tests.Shopping;
 
+using Microsoft.Extensions.Logging;
 using TicketSystem.Domain.Orders;
 using TicketSystem.Domain.Parks;
 using TicketSystem.Domain.Repositories;
@@ -528,6 +529,54 @@ public class ShoppingServiceTests
         Assert.Equal("Your ticket for July 1, 2026", email.Subject);
         Assert.Contains(ticket.Id.ToString(), email.PlainText);
         Assert.Contains(ticket.Id.ToString(), email.Html);
+    }
+
+    [Fact]
+    public async Task MarkPaid_ReturnsSuccessAndLogsTicketDetailsWhenEmailFails()
+    {
+        var cartRepository = new StubCartRepository();
+        var parkRepository = new StubParkRepository(
+            new DailyInventory(
+                "adventurebay-entry",
+                "adventurebay",
+                "Adventure Bay Entry",
+                new DateOnly(2026, 7, 1),
+                10,
+                0,
+                79.99m));
+        var logger = new RecordingLogger<ShoppingService>();
+        var shoppingService = new ShoppingService(
+            cartRepository,
+            parkRepository,
+            new StubTicketRepository(),
+            new FailingEmailService(),
+            new TicketEmailService("tickets@parkticketsystem.test"),
+            CreateTimeProvider(),
+            logger);
+        var addResult = shoppingService.AddToCart(
+            "adventurebay",
+            "adventurebay-entry",
+            1,
+            2026,
+            7,
+            1);
+        var cartItem = Assert.Single(shoppingService.GetCartItems(addResult.CartId));
+        shoppingService.AssignTicketHolder(
+            addResult.CartId,
+            cartItem.Id,
+            "Ryan",
+            "Peterson",
+            "ryan@example.com");
+
+        var result = await shoppingService.MarkPaidAsync(addResult.CartId);
+
+        Assert.True(result.Success);
+        var ticket = Assert.Single(result.Tickets);
+        var logEntry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, logEntry.Level);
+        Assert.Contains("ryan@example.com", logEntry.Message);
+        Assert.Contains(ticket.Id.ToString(), logEntry.Message);
+        Assert.IsType<InvalidOperationException>(logEntry.Exception);
     }
 
     [Fact]
@@ -1099,5 +1148,46 @@ public class ShoppingServiceTests
             return Task.CompletedTask;
         }
     }
+
+    private sealed class FailingEmailService : IEmailService
+    {
+        public Task SendAsync(
+            string senderEmail,
+            string receiverEmail,
+            string subject,
+            string plainText,
+            string html,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("Email delivery failed.");
+        }
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+        }
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
 
 }

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TicketSystem.Domain.Orders;
 using TicketSystem.Domain.Parks;
 using TicketSystem.Domain.Repositories;
@@ -12,6 +14,7 @@ public sealed class ShoppingService
     private readonly IEmailService _emailService;
     private readonly TicketEmailService _ticketEmailService;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<ShoppingService> _logger;
 
     public ShoppingService(
         ICartRepository cartRepository,
@@ -25,7 +28,8 @@ public sealed class ShoppingService
             ticketRepository,
             emailService,
             ticketEmailService,
-            TimeProvider.System)
+            TimeProvider.System,
+            NullLogger<ShoppingService>.Instance)
     {
     }
 
@@ -36,6 +40,25 @@ public sealed class ShoppingService
         IEmailService emailService,
         TicketEmailService ticketEmailService,
         TimeProvider timeProvider)
+        : this(
+            cartRepository,
+            parkRepository,
+            ticketRepository,
+            emailService,
+            ticketEmailService,
+            timeProvider,
+            NullLogger<ShoppingService>.Instance)
+    {
+    }
+
+    public ShoppingService(
+        ICartRepository cartRepository,
+        IParkRepository parkRepository,
+        ITicketRepository ticketRepository,
+        IEmailService emailService,
+        TicketEmailService ticketEmailService,
+        TimeProvider timeProvider,
+        ILogger<ShoppingService> logger)
     {
         _cartRepository = cartRepository;
         _parkRepository = parkRepository;
@@ -43,6 +66,7 @@ public sealed class ShoppingService
         _emailService = emailService;
         _ticketEmailService = ticketEmailService;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
     public AddToCartResult AddToCart(string parkUniqueName, string productId, int quantity)
@@ -268,13 +292,29 @@ public sealed class ShoppingService
         foreach (var ticket in paymentResult.Tickets)
         {
             var email = _ticketEmailService.Create(ticket);
-            await _emailService.SendAsync(
-                email.SenderEmail,
-                email.ReceiverEmail,
-                email.Subject,
-                email.PlainText,
-                email.Html,
-                cancellationToken);
+
+            try
+            {
+                await _emailService.SendAsync(
+                    email.SenderEmail,
+                    email.ReceiverEmail,
+                    email.Subject,
+                    email.PlainText,
+                    email.Html,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Failed to email ticket {TicketId} to {EmailAddress}.",
+                    ticket.Id,
+                    ticket.Email);
+            }
         }
 
         var tickets = paymentResult.Tickets
